@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Tool caches (pytest, mypy, ruff)
+.cache/
+
+# Virtual environments
+.venv/
+
+# Duration store
+.balance/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Design documents
+docs/superpowers/

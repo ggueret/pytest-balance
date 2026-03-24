@@ -1,0 +1,83 @@
+[project]
+name = "pytest-balance"
+version = "0.1.0"
+description = "Duration-based test distribution for pytest across CI runners and xdist workers"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE*"]
+requires-python = ">=3.10"
+authors = [{ name = "Geoffrey Guéret", email = "geoffrey@gueret.co" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Pytest",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
+keywords = ["pytest", "testing", "load-balancing", "distribution", "xdist", "CI"]
+dependencies = ["pytest>=8"]
+
+[project.urls]
+Homepage = "https://github.com/ggueret/pytest-balance"
+Repository = "https://github.com/ggueret/pytest-balance.git"
+Documentation = "https://github.com/ggueret/pytest-balance"
+Issues = "https://github.com/ggueret/pytest-balance/issues"
+Changelog = "https://github.com/ggueret/pytest-balance/blob/main/CHANGELOG.md"
+
+[project.entry-points.pytest11]
+balance = "pytest_balance.plugin"
+
+[project.scripts]
+pytest-balance = "pytest_balance.cli:main"
+
+[project.optional-dependencies]
+xdist = ["pytest-xdist>=3.5"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = ["ruff", "mypy", "pytest", "pytest-xdist>=3.5"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+cache-dir = ".cache/ruff"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
+ignore = ["E501"]
+fixable = ["ALL"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pytest_balance"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.10"
+files = ["src", "tests"]
+strict = true
+show_error_codes = true
+cache_dir = ".cache/mypy"
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+cache_dir = ".cache/pytest"
