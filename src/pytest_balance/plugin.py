@@ -86,9 +86,7 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     if not session.config.getoption("balance_store"):
         return
 
-    reporter: TerminalReporter | None = session.config.pluginmanager.getplugin(
-        "terminalreporter"
-    )
+    reporter: TerminalReporter | None = session.config.pluginmanager.getplugin("terminalreporter")
     if reporter is None:
         return
 
@@ -154,8 +152,8 @@ def pytest_terminal_summary(
 
     # Compute actual durations from terminal reporter stats
     actual_durations: dict[str, float] = {}
-    for report in (
-        terminalreporter.stats.get("passed", []) + terminalreporter.stats.get("failed", [])
+    for report in terminalreporter.stats.get("passed", []) + terminalreporter.stats.get(
+        "failed", []
     ):
         if hasattr(report, "when") and report.when == "call":
             actual_durations[report.nodeid] = report.duration

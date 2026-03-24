@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pytest_balance.algorithms.partitioner import Scope, TestGroup, group_by_scope
+from pytest_balance.algorithms.partitioner import Scope, group_by_scope
 
 
 class TestGroupByScope:

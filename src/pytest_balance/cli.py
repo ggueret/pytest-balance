@@ -136,9 +136,7 @@ def main() -> None:
     )
 
     # stats
-    stats_parser = subparsers.add_parser(
-        "stats", help="Show statistics about the duration store."
-    )
+    stats_parser = subparsers.add_parser("stats", help="Show statistics about the duration store.")
     stats_parser.add_argument(
         "store",
         nargs="?",

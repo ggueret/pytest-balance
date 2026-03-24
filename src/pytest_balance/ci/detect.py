@@ -47,8 +47,12 @@ def detect_ci(
 
 def _detect_provider() -> CIContext | None:
     for detector in [
-        _detect_github, _detect_gitlab, _detect_circleci,
-        _detect_azure, _detect_buildkite, _detect_generic,
+        _detect_github,
+        _detect_gitlab,
+        _detect_circleci,
+        _detect_azure,
+        _detect_buildkite,
+        _detect_generic,
     ]:
         ctx = detector()
         if ctx is not None:
@@ -76,9 +80,13 @@ def _detect_gitlab() -> CIContext | None:
     total = os.environ.get("CI_NODE_TOTAL")
     if index is None or total is None:
         return None
-    return CIContext("gitlab", int(index) - 1, int(total),
-                     os.environ.get("CI_PIPELINE_ID", "unknown"),
-                     os.environ.get("CI_COMMIT_REF_NAME"))
+    return CIContext(
+        "gitlab",
+        int(index) - 1,
+        int(total),
+        os.environ.get("CI_PIPELINE_ID", "unknown"),
+        os.environ.get("CI_COMMIT_REF_NAME"),
+    )
 
 
 def _detect_circleci() -> CIContext | None:
@@ -88,9 +96,13 @@ def _detect_circleci() -> CIContext | None:
     total = os.environ.get("CIRCLE_NODE_TOTAL")
     if index is None or total is None:
         return None
-    return CIContext("circleci", int(index), int(total),
-                     os.environ.get("CIRCLE_BUILD_NUM", "unknown"),
-                     os.environ.get("CIRCLE_BRANCH"))
+    return CIContext(
+        "circleci",
+        int(index),
+        int(total),
+        os.environ.get("CIRCLE_BUILD_NUM", "unknown"),
+        os.environ.get("CIRCLE_BRANCH"),
+    )
 
 
 def _detect_azure() -> CIContext | None:
@@ -100,9 +112,13 @@ def _detect_azure() -> CIContext | None:
     total = os.environ.get("SYSTEM_TOTALJOBSINPHASE")
     if index is None or total is None:
         return None
-    return CIContext("azure", int(index) - 1, int(total),
-                     os.environ.get("BUILD_BUILDID", "unknown"),
-                     os.environ.get("BUILD_SOURCEBRANCH"))
+    return CIContext(
+        "azure",
+        int(index) - 1,
+        int(total),
+        os.environ.get("BUILD_BUILDID", "unknown"),
+        os.environ.get("BUILD_SOURCEBRANCH"),
+    )
 
 
 def _detect_buildkite() -> CIContext | None:
@@ -112,9 +128,13 @@ def _detect_buildkite() -> CIContext | None:
     total = os.environ.get("BUILDKITE_PARALLEL_JOB_COUNT")
     if index is None or total is None:
         return None
-    return CIContext("buildkite", int(index), int(total),
-                     os.environ.get("BUILDKITE_BUILD_ID", "unknown"),
-                     os.environ.get("BUILDKITE_BRANCH"))
+    return CIContext(
+        "buildkite",
+        int(index),
+        int(total),
+        os.environ.get("BUILDKITE_BUILD_ID", "unknown"),
+        os.environ.get("BUILDKITE_BRANCH"),
+    )
 
 
 def _detect_generic() -> CIContext | None:

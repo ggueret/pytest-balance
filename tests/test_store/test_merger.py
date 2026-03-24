@@ -23,7 +23,7 @@ class TestMergeFiles:
         merge_files([p1, p2], out)
         lines = out.read_text().strip().split("\n")
         assert len(lines) == 4
-        test_ids = {json.loads(l)["test_id"] for l in lines}
+        test_ids = {json.loads(line)["test_id"] for line in lines}
         assert test_ids == {"a", "b", "c", "d"}
 
     def test_dedup_by_test_id_and_run_id(self, tmp_path: Path):
@@ -63,5 +63,6 @@ class TestMergeFiles:
 
     def test_no_files_raises(self, tmp_path: Path):
         import pytest
+
         with pytest.raises(ValueError, match="No input files"):
             merge_files([], tmp_path / "out.jsonl")

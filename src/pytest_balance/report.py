@@ -60,7 +60,5 @@ class BalanceReport:
             )
         for test_id, est, actual in self.worst_predictions[:3]:
             lines.append(f"Worst prediction: {test_id} (est. {est:.1f}s -> {actual:.1f}s)")
-        lines.append(
-            "==================================================================="
-        )
+        lines.append("===================================================================")
         return "\n".join(lines)

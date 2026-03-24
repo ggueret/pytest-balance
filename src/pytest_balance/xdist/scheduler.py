@@ -141,9 +141,7 @@ class BalanceScheduler:
         self.steal_in_flight = None
 
         indices_set = set(indices)
-        self.node2pending[node] = [
-            i for i in self.node2pending[node] if i not in indices_set
-        ]
+        self.node2pending[node] = [i for i in self.node2pending[node] if i not in indices_set]
         self.pending.extend(indices)
         self._check_schedule()
 
@@ -212,9 +210,7 @@ class BalanceScheduler:
         buckets = partition(group_durations, n_workers)
 
         # Build a fast test_id -> index lookup.
-        test_id_to_index: dict[str, int] = {
-            tid: idx for idx, tid in enumerate(self.collection)
-        }
+        test_id_to_index: dict[str, int] = {tid: idx for idx, tid in enumerate(self.collection)}
 
         for worker_idx, bucket in enumerate(buckets):
             node = active_nodes[worker_idx]

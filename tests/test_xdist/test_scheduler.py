@@ -6,9 +6,9 @@ import pytest
 
 xdist = pytest.importorskip("xdist")
 
-from pytest_balance.algorithms.partitioner import Scope
-from pytest_balance.store.models import DurationEstimate
-from pytest_balance.xdist.scheduler import BalanceScheduler
+from pytest_balance.algorithms.partitioner import Scope  # noqa: E402
+from pytest_balance.store.models import DurationEstimate  # noqa: E402
+from pytest_balance.xdist.scheduler import BalanceScheduler  # noqa: E402
 
 
 def _mock_node(gateway_id: str = "gw0") -> MagicMock:

@@ -71,6 +71,7 @@ class TestLoadEstimates:
         append_durations(store, [_td("a", 1.0), _td("b", 3.0), _td("c", 5.0)])
         estimates = load_estimates(store)
         from pytest_balance.store.reader import default_estimate
+
         unknown = default_estimate(estimates)
         assert unknown.estimate == 3.0  # Median of known
         assert unknown.confidence == 0.0

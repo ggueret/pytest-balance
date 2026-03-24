@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pytest_balance.ci.detect import CIContext, detect_ci
+from pytest_balance.ci.detect import detect_ci
 
 
 class TestDetectCI:
@@ -75,8 +75,13 @@ class TestDetectCI:
 
     def test_no_ci_returns_none(self, monkeypatch: pytest.MonkeyPatch):
         for var in [
-            "GITHUB_ACTIONS", "GITLAB_CI", "CIRCLECI", "TF_BUILD", "BUILDKITE",
-            "PYTEST_BALANCE_NODE_INDEX", "PYTEST_BALANCE_NODE_TOTAL",
+            "GITHUB_ACTIONS",
+            "GITLAB_CI",
+            "CIRCLECI",
+            "TF_BUILD",
+            "BUILDKITE",
+            "PYTEST_BALANCE_NODE_INDEX",
+            "PYTEST_BALANCE_NODE_TOTAL",
         ]:
             monkeypatch.delenv(var, raising=False)
         assert detect_ci() is None
