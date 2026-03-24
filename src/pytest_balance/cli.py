@@ -109,21 +109,41 @@ def main() -> None:
         nargs="*",
         help="Partial files to merge (default: auto-detect partials).",
     )
+    merge_parser.add_argument(
+        "-o",
+        "--output",
+        default=None,
+        help="Output file (default: <--path>/durations.jsonl).",
+    )
 
     # prune
     prune_parser = subparsers.add_parser(
         "prune", help="Remove old entries from the duration store."
     )
     prune_parser.add_argument(
+        "store",
+        nargs="?",
+        default=None,
+        help="Path to the duration store file (default: <--path>/durations.jsonl).",
+    )
+    prune_parser.add_argument(
+        "--keep-runs",
         "--max-runs",
         type=int,
         default=50,
+        dest="keep_runs",
         help="Maximum number of runs to keep per test (default: 50).",
     )
 
     # stats
     stats_parser = subparsers.add_parser(
         "stats", help="Show statistics about the duration store."
+    )
+    stats_parser.add_argument(
+        "store",
+        nargs="?",
+        default=None,
+        help="Path to the duration store file (default: <--path>/durations.jsonl).",
     )
     stats_parser.add_argument(
         "--json",
@@ -168,19 +188,19 @@ def main() -> None:
         sys.exit(0)
 
     if args.command == "merge":
-        _cmd_merge(store_path, args.files)
+        _cmd_merge(store_path, args.files, args.output)
     elif args.command == "prune":
-        _cmd_prune(store_path, args.max_runs)
+        _cmd_prune(store_path, args.keep_runs, args.store)
     elif args.command == "stats":
-        _cmd_stats(store_path, args.output_json)
+        _cmd_stats(store_path, args.output_json, args.store)
     elif args.command == "plan":
         _cmd_plan(store_path, args.node_total, args.scope, args.estimator, args.output_json)
 
 
-def _cmd_merge(store_path: Path, files: list[str] | None) -> None:
+def _cmd_merge(store_path: Path, files: list[str] | None, output_arg: str | None = None) -> None:
     from pytest_balance.store.merger import merge_files
 
-    output = store_path / "durations.jsonl"
+    output = Path(output_arg) if output_arg else store_path / "durations.jsonl"
 
     inputs = [Path(f) for f in files] if files else sorted(store_path.glob("durations-*.jsonl"))
 
@@ -197,43 +217,53 @@ def _cmd_merge(store_path: Path, files: list[str] | None) -> None:
             f.unlink()
 
 
-def _cmd_prune(store_path: Path, max_runs: int) -> None:
+def _cmd_prune(store_path: Path, max_runs: int, store_arg: str | None = None) -> None:
     import json as json_mod
 
-    store = store_path / "durations.jsonl"
+    store = Path(store_arg) if store_arg else store_path / "durations.jsonl"
     if not store.exists():
         print("No duration store found.")
         sys.exit(0)
 
-    # Group records by test_id, keep only last max_runs
-    records: dict[str, list[str]] = {}
+    # Collect all records, preserving insertion order
+    all_lines: list[str] = []
+    run_ids_seen: list[str] = []
     for line in store.read_text().splitlines():
         line = line.strip()
         if not line:
             continue
         try:
             data = json_mod.loads(line)
-            tid = data["test_id"]
-            if tid not in records:
-                records[tid] = []
-            records[tid].append(line)
+            rid = data.get("run_id", "")
+            if rid and rid not in run_ids_seen:
+                run_ids_seen.append(rid)
+            all_lines.append(line)
         except (json_mod.JSONDecodeError, KeyError):
             continue
 
-    total_before = sum(len(v) for v in records.values())
+    total_before = len(all_lines)
+
+    # Keep only records whose run_id is among the last max_runs distinct run_ids
+    keep_run_ids: set[str] = set(run_ids_seen[-max_runs:])
     pruned_lines: list[str] = []
-    for tid in records:
-        pruned_lines.extend(records[tid][-max_runs:])
+    for line in all_lines:
+        try:
+            data = json_mod.loads(line)
+            rid = data.get("run_id", "")
+            if not rid or rid in keep_run_ids:
+                pruned_lines.append(line)
+        except (json_mod.JSONDecodeError, KeyError):
+            continue
 
     total_after = len(pruned_lines)
     store.write_text("\n".join(pruned_lines) + "\n" if pruned_lines else "")
     print(f"Pruned {total_before - total_after} records ({total_before} -> {total_after})")
 
 
-def _cmd_stats(store_path: Path, output_json: bool) -> None:
+def _cmd_stats(store_path: Path, output_json: bool, store_arg: str | None = None) -> None:
     from pytest_balance.store.reader import Estimator, load_estimates
 
-    store = store_path / "durations.jsonl"
+    store = Path(store_arg) if store_arg else store_path / "durations.jsonl"
     estimates = load_estimates(store, Estimator.EMA)
 
     if not estimates:
@@ -260,7 +290,7 @@ def _cmd_stats(store_path: Path, output_json: bool) -> None:
             )
         )
     else:
-        print(f"Tests: {total_tests}")
+        print(f"{total_tests} tests")
         print(f"Total estimated time: {total_time:.1f}s")
         print(f"Average: {avg_time:.3f}s")
         print(f"Slowest: {max_test.test_id} ({max_test.estimate:.3f}s)")
