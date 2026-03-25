@@ -11,6 +11,8 @@ from datetime import datetime
 class TestDuration:
     """A single recorded test duration from one run."""
 
+    __test__ = False  # Not a pytest test class
+
     test_id: str
     duration: float
     timestamp: datetime

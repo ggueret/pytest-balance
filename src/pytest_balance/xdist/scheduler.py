@@ -9,7 +9,7 @@ from xdist.remote import Producer  # type: ignore[import-untyped]
 from xdist.report import report_collection_diff  # type: ignore[import-untyped]
 
 from pytest_balance.algorithms.lpt import partition
-from pytest_balance.algorithms.partitioner import Scope, _extract_scope, group_by_scope
+from pytest_balance.algorithms.partitioner import Scope, extract_scope, group_by_scope
 from pytest_balance.store.models import DurationEstimate
 from pytest_balance.store.reader import default_estimate
 
@@ -50,6 +50,7 @@ class BalanceScheduler:
         self.node2pending: dict[WorkerController, list[int]] = {}
         self.pending: list[int] = []
         self.collection: list[str] | None = None
+        self._test_id_to_index: dict[str, int] = {}
         self.steal_in_flight: WorkerController | None = None
 
     # -- Protocol properties --------------------------------------------------
@@ -125,7 +126,7 @@ class BalanceScheduler:
     def mark_test_pending(self, item: str) -> None:
         """Re-add a test to the global pending list."""
         assert self.collection is not None
-        self.pending.insert(0, self.collection.index(item))
+        self.pending.insert(0, self._test_id_to_index[item])
         self._check_schedule()
 
     def remove_pending_tests_from_node(
@@ -210,14 +211,14 @@ class BalanceScheduler:
         buckets = partition(group_durations, n_workers)
 
         # Build a fast test_id -> index lookup.
-        test_id_to_index: dict[str, int] = {tid: idx for idx, tid in enumerate(self.collection)}
+        self._test_id_to_index = {tid: idx for idx, tid in enumerate(self.collection)}
 
         for worker_idx, bucket in enumerate(buckets):
             node = active_nodes[worker_idx]
             indices: list[int] = []
             for scope_id in bucket:
                 for tid in group_test_ids[scope_id]:
-                    indices.append(test_id_to_index[tid])
+                    indices.append(self._test_id_to_index[tid])
 
             if indices:
                 self.node2pending[node].extend(indices)
@@ -311,7 +312,7 @@ class BalanceScheduler:
         # complete groups only.
         scope_groups: dict[str, list[int]] = {}
         for idx in pending_indices:
-            scope_key = _extract_scope(self.collection[idx], self.scope)
+            scope_key = extract_scope(self.collection[idx], self.scope)
             scope_groups.setdefault(scope_key, []).append(idx)
 
         if len(scope_groups) < 2:

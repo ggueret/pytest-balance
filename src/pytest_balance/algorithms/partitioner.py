@@ -21,7 +21,7 @@ class TestGroup:
     estimated_duration: float = 0.0
 
 
-def _extract_scope(test_id: str, scope: Scope) -> str:
+def extract_scope(test_id: str, scope: Scope) -> str:
     """Extract the scope key from a pytest node ID."""
     if scope == Scope.TEST:
         return test_id
@@ -54,7 +54,7 @@ def group_by_scope(test_ids: list[str], scope: Scope) -> list[TestGroup]:
 
     groups: OrderedDict[str, TestGroup] = OrderedDict()
     for test_id in test_ids:
-        scope_key = _extract_scope(test_id, scope)
+        scope_key = extract_scope(test_id, scope)
         if scope_key not in groups:
             groups[scope_key] = TestGroup(scope_id=scope_key)
         groups[scope_key].test_ids.append(test_id)
