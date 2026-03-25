@@ -44,6 +44,7 @@ GitHub Actions does not expose parallel job indices natively. Pass them from the
 ```yaml
 jobs:
   test:
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         shard: [0, 1, 2, 3]
@@ -51,12 +52,13 @@ jobs:
       PYTEST_BALANCE_NODE_INDEX: ${{ matrix.shard }}
       PYTEST_BALANCE_NODE_TOTAL: 4
     steps:
+      - uses: actions/checkout@v4
       - run: pip install pytest-balance
       - run: pytest --balance --balance-store
       - uses: actions/upload-artifact@v4
         with:
           name: durations-${{ matrix.shard }}
-          path: .balance/durations-partial-*.jsonl
+          path: .balance/durations-*.jsonl
 
   merge-durations:
     needs: test
@@ -64,7 +66,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
       - run: pip install pytest-balance
-      - run: pytest-balance merge durations-*/durations-partial-*.jsonl -o .balance/durations.jsonl
+      - run: pytest-balance merge durations-*/durations-*.jsonl -o .balance/durations.jsonl
       - uses: actions/upload-artifact@v4
         with:
           name: balance-store
@@ -78,21 +80,23 @@ automatically. The plugin converts the 1-based index to 0-based internally.
 
 ```yaml
 test:
+  image: python:3.14
   parallel: 4
   script:
     - pip install pytest-balance
     - pytest --balance --balance-store
   artifacts:
     paths:
-      - .balance/durations-partial-*.jsonl
+      - .balance/durations-*.jsonl
     expire_in: 7 days
 
 merge-durations:
+  image: python:3.14
   stage: .post
   needs: [test]
   script:
     - pip install pytest-balance
-    - pytest-balance merge .balance/durations-partial-*.jsonl -o .balance/durations.jsonl
+    - pytest-balance merge .balance/durations-*.jsonl -o .balance/durations.jsonl
   artifacts:
     paths:
       - .balance/durations.jsonl
@@ -107,8 +111,11 @@ automatically.
 ```yaml
 jobs:
   test:
+    docker:
+      - image: cimg/python:3.14
     parallelism: 4
     steps:
+      - checkout
       - run: pip install pytest-balance
       - run: pytest --balance --balance-store
       - store_artifacts:
@@ -152,7 +159,7 @@ All options are available as pytest command-line flags:
 | `--balance-store` | off | Record test durations to the balance store |
 | `--balance-scope` | `module` | Grouping scope: `test`, `class`, `module`, `group` |
 | `--balance-path` | `.balance/` | Path to the balance store directory |
-| `--balance-plan` | off | Show the distribution plan without running tests |
+| `--balance-plan` | off | Show the distribution plan without running tests (requires `--balance`) |
 | `--balance-node-index` | auto | Explicit node index (overrides CI auto-detection) |
 | `--balance-node-total` | auto | Explicit total node count (overrides CI auto-detection) |
 | `--balance-estimator` | `ema` | Duration estimation strategy: `ema`, `median`, `last` |

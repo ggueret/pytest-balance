@@ -128,7 +128,10 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
 
     # Write to partial file in CI, main file locally
     if ci is not None:
-        output = store_path / f"durations-{ci.run_id}-{ci.node_index}.jsonl"
+        import re
+
+        safe_run_id = re.sub(r"[^a-zA-Z0-9_.-]", "_", ci.run_id)
+        output = store_path / f"durations-{safe_run_id}-{ci.node_index}.jsonl"
     else:
         output = store_path / "durations.jsonl"
 
