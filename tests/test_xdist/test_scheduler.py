@@ -212,7 +212,9 @@ class TestWorkStealing:
 
         # Second rebalance (e.g., another node goes idle) should NOT trigger another steal.
         sched._check_schedule()
-        assert n1.send_steal.call_count == steal_call_count, "Second steal triggered while one in flight"
+        assert n1.send_steal.call_count == steal_call_count, (
+            "Second steal triggered while one in flight"
+        )
 
     def test_remove_pending_tests_from_node(self):
         """Stolen tests are moved from node pending to global pending and redistributed."""
