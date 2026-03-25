@@ -1,6 +1,32 @@
 # pytest-balance
 
-Duration-based test distribution for pytest across CI runners and xdist workers.
+Intelligent test distribution for pytest. Split your test suite across CI runners and
+xdist workers based on actual execution times, not file count.
+
+Most CI parallelism strategies split tests naively: round-robin, alphabetical, or by file
+count. The result is predictable. One runner finishes in 2 minutes, another grinds for
+12, and your pipeline is only as fast as the slowest shard.
+
+**pytest-balance fixes this.** It records test durations, learns from them, and uses a
+scheduling algorithm with real guarantees to spread the load evenly.
+
+### What makes it different
+
+- **LPT scheduling.** The Longest Processing Time First algorithm assigns the heaviest
+  test groups first and greedily fills the lightest bucket. This minimizes your total wall
+  time with a proven worst-case bound of 4/3 optimal.
+- **Deterministic partitioning.** Given the same duration data and the same test
+  collection, every CI run produces the exact same split. No flaky ordering, no
+  cache-busting surprises, no "works on my shard" mysteries. Ties are broken
+  lexicographically, so the output is reproducible down to the test.
+- **Scope-aware grouping.** Tests that share module or class fixtures stay together,
+  avoiding expensive teardown/setup cycles across nodes.
+- **Work-stealing.** When used with pytest-xdist, idle workers steal complete test groups
+  from the busiest worker at runtime. Static estimates are never perfect;
+  work-stealing closes the gap.
+- **Adaptive estimation.** An exponential moving average (EMA) tracks duration trends
+  over time, so a test that got slower last week weighs more than one that was slow six
+  months ago.
 
 ## Installation
 
