@@ -222,23 +222,24 @@ def _cmd_prune(store_path: Path, max_runs: int, store_arg: str | None = None) ->
     no_rid_lines: list[str] = []
     total_before = 0
 
-    for line in store.read_text().splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            data = json_mod.loads(line)
-        except (json_mod.JSONDecodeError, KeyError):
-            continue
-        total_before += 1
-        rid = data.get("run_id", "")
-        if not rid:
-            no_rid_lines.append(line)
-            continue
-        if rid not in run_id_lines:
-            run_id_lines[rid] = []
-            run_id_order.append(rid)
-        run_id_lines[rid].append(line)
+    with open(store) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                data = json_mod.loads(line)
+            except (json_mod.JSONDecodeError, KeyError):
+                continue
+            total_before += 1
+            rid = data.get("run_id", "")
+            if not rid:
+                no_rid_lines.append(line)
+                continue
+            if rid not in run_id_lines:
+                run_id_lines[rid] = []
+                run_id_order.append(rid)
+            run_id_lines[rid].append(line)
 
     # Keep the last max_runs distinct run_ids
     keep_rids = run_id_order[-max_runs:]
