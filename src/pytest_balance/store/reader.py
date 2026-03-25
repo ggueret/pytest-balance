@@ -29,22 +29,26 @@ def load_estimates(
 
     records: defaultdict[str, list[float]] = defaultdict(list)
 
-    for line_num, line in enumerate(path.read_text().splitlines(), 1):
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            data = json.loads(line)
-            test_id = data["test_id"]
-            duration = float(data["duration"])
-            records[test_id].append(duration)
-        except (json.JSONDecodeError, KeyError, ValueError):
-            warnings.warn(
-                f"Skipping corrupted line {line_num} in {path}",
-                UserWarning,
-                stacklevel=2,
-            )
-            continue
+    with open(path) as f:
+        for line_num, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+                test_id = data["test_id"]
+                duration = float(data["duration"])
+                durations = records[test_id]
+                durations.append(duration)
+                if len(durations) > max_runs * 2:
+                    records[test_id] = durations[-max_runs:]
+            except (json.JSONDecodeError, KeyError, ValueError):
+                warnings.warn(
+                    f"Skipping corrupted line {line_num} in {path}",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                continue
 
     for test_id in records:
         if len(records[test_id]) > max_runs:
