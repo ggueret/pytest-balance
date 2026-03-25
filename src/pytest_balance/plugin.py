@@ -2,26 +2,19 @@
 
 from __future__ import annotations
 
-import uuid
 import warnings
-from datetime import datetime, timezone
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
-from pytest_balance.algorithms.partitioner import Scope
-from pytest_balance.ci.detect import detect_ci
-from pytest_balance.ci.splitter import split_tests
 from pytest_balance.cli import add_pytest_options
-from pytest_balance.report import BalanceReport, NodeReport
-from pytest_balance.store.models import DurationEstimate, TestDuration
-from pytest_balance.store.reader import Estimator, load_estimates
-from pytest_balance.store.writer import append_durations
 
 if TYPE_CHECKING:
     from _pytest.config import Config
     from _pytest.terminal import TerminalReporter
+
+    from pytest_balance.algorithms.partitioner import Scope
+    from pytest_balance.store.models import DurationEstimate
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -36,6 +29,13 @@ def pytest_collection_modifyitems(
     """Apply CI-based test splitting when --balance is active."""
     if not config.getoption("balance"):
         return
+
+    from pathlib import Path
+
+    from pytest_balance.algorithms.partitioner import Scope
+    from pytest_balance.ci.detect import detect_ci
+    from pytest_balance.ci.splitter import split_tests
+    from pytest_balance.store.reader import Estimator, load_estimates
 
     store_path = Path(config.getoption("balance_path"))
     store_file = store_path / "durations.jsonl"
@@ -89,6 +89,14 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
     reporter: TerminalReporter | None = session.config.pluginmanager.getplugin("terminalreporter")
     if reporter is None:
         return
+
+    import uuid
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    from pytest_balance.ci.detect import detect_ci
+    from pytest_balance.store.models import TestDuration
+    from pytest_balance.store.writer import append_durations
 
     store_path = Path(session.config.getoption("balance_path"))
 
@@ -149,6 +157,8 @@ def pytest_terminal_summary(
     data: _BalanceData | None = config.stash.get(_balance_key, None)
     if data is None:
         return
+
+    from pytest_balance.report import BalanceReport, NodeReport
 
     # Compute actual durations from terminal reporter stats
     actual_durations: dict[str, float] = {}
