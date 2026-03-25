@@ -1,7 +1,7 @@
 [project]
 name = "pytest-balance"
 version = "0.1.0"
-description = "Duration-based test distribution for pytest across CI runners and xdist workers"
+description = "Intelligent test distribution for pytest based on actual execution times, not file count"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE*"]
