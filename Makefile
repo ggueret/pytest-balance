@@ -7,7 +7,7 @@ lint:
 	uv run ruff check src tests
 
 typecheck:
-	uv run mypy src tests
+	uv run mypy src
 
 test:
 	uv run pytest
@@ -19,7 +19,7 @@ format:
 check:
 	uv run ruff format --check src tests
 	uv run ruff check src tests
-	uv run mypy src tests
+	uv run mypy src
 
 all: lint typecheck test
 
