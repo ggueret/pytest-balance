@@ -46,21 +46,25 @@ jobs:
   test:
     strategy:
       matrix:
-        node_index: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3]
     env:
-      PYTEST_BALANCE_NODE_INDEX: ${{ matrix.node_index }}
+      PYTEST_BALANCE_NODE_INDEX: ${{ matrix.shard }}
       PYTEST_BALANCE_NODE_TOTAL: 4
     steps:
-      - run: pytest --balance
-```
+      - run: pip install pytest-balance
+      - run: pytest --balance --balance-store
+      - uses: actions/upload-artifact@v4
+        with:
+          name: durations-${{ matrix.shard }}
+          path: .balance/durations-partial-*.jsonl
 
-After all jobs finish, merge the partial stores in a follow-up job:
-
-```yaml
-  merge-store:
+  merge-durations:
     needs: test
+    runs-on: ubuntu-latest
     steps:
-      - run: pytest-balance merge
+      - uses: actions/download-artifact@v4
+      - run: pip install pytest-balance
+      - run: pytest-balance merge durations-*/durations-partial-*.jsonl -o .balance/durations.jsonl
       - uses: actions/upload-artifact@v4
         with:
           name: balance-store
@@ -76,7 +80,23 @@ automatically. The plugin converts the 1-based index to 0-based internally.
 test:
   parallel: 4
   script:
-    - pytest --balance
+    - pip install pytest-balance
+    - pytest --balance --balance-store
+  artifacts:
+    paths:
+      - .balance/durations-partial-*.jsonl
+    expire_in: 7 days
+
+merge-durations:
+  stage: .post
+  needs: [test]
+  script:
+    - pip install pytest-balance
+    - pytest-balance merge .balance/durations-partial-*.jsonl -o .balance/durations.jsonl
+  artifacts:
+    paths:
+      - .balance/durations.jsonl
+    expire_in: 30 days
 ```
 
 ### CircleCI
@@ -89,7 +109,10 @@ jobs:
   test:
     parallelism: 4
     steps:
-      - run: pytest --balance
+      - run: pip install pytest-balance
+      - run: pytest --balance --balance-store
+      - store_artifacts:
+          path: .balance/
 ```
 
 ### Azure DevOps
