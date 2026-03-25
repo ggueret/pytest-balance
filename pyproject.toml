@@ -29,7 +29,7 @@ Homepage = "https://github.com/ggueret/pytest-balance"
 Repository = "https://github.com/ggueret/pytest-balance.git"
 Documentation = "https://github.com/ggueret/pytest-balance"
 Issues = "https://github.com/ggueret/pytest-balance/issues"
-Changelog = "https://github.com/ggueret/pytest-balance/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/ggueret/pytest-balance/releases"
 
 [project.entry-points.pytest11]
 balance = "pytest_balance.plugin"

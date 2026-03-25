@@ -23,5 +23,11 @@ build/
 # OS
 .DS_Store
 
-# Design documents
-docs/superpowers/
+# Coverage
+.coverage
+
+# Review
+.full-review/
+
+# Ongoing documentation
+docs/
