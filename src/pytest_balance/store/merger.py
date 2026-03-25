@@ -11,7 +11,7 @@ def merge_files(inputs: list[Path], output: Path) -> None:
     if not inputs:
         raise ValueError("No input files provided")
 
-    seen: set[tuple[str, str]] = set()
+    seen: dict[tuple[str, str], int] = {}
     all_lines: list[str] = []
 
     sources = []
@@ -29,8 +29,10 @@ def merge_files(inputs: list[Path], output: Path) -> None:
             try:
                 data = json.loads(line)
                 key = (data["test_id"], data.get("run_id", ""))
-                if key not in seen:
-                    seen.add(key)
+                if key in seen:
+                    all_lines[seen[key]] = line
+                else:
+                    seen[key] = len(all_lines)
                     all_lines.append(line)
             except (json.JSONDecodeError, KeyError):
                 continue

@@ -11,7 +11,6 @@ class Scope(enum.Enum):
     TEST = "test"
     CLASS = "class"
     MODULE = "module"
-    FILE = "file"
     GROUP = "group"
 
 
@@ -36,9 +35,6 @@ def _extract_scope(test_id: str, scope: Scope) -> str:
 
     parts = test_id.split("::")
     file_part = parts[0] if parts else test_id
-
-    if scope == Scope.FILE:
-        return file_part
 
     if scope == Scope.MODULE:
         return file_part

@@ -29,15 +29,6 @@ class TestGroupByScope:
         bar_group = next(g for g in groups if "TestBar" in g.scope_id)
         assert len(bar_group.test_ids) == 2
 
-    def test_group_by_file(self):
-        tests = [
-            "tests/test_api.py::TestA::test_1",
-            "tests/test_api.py::test_2",
-            "tests/test_db.py::test_3",
-        ]
-        groups = group_by_scope(tests, Scope.FILE)
-        assert len(groups) == 2
-
     def test_group_by_test(self):
         tests = ["tests/test_a.py::test_1", "tests/test_a.py::test_2"]
         groups = group_by_scope(tests, Scope.TEST)

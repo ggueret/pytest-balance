@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import warnings
 from dataclasses import dataclass
 
 
@@ -67,10 +68,19 @@ def _detect_github() -> CIContext | None:
     total = os.environ.get("PYTEST_BALANCE_NODE_TOTAL")
     if index is None or total is None:
         return None
+    try:
+        index_int, total_int = int(index), int(total)
+    except ValueError:
+        warnings.warn(
+            f"Non-integer balance env var: NODE_INDEX={index!r}, NODE_TOTAL={total!r}",
+            UserWarning,
+            stacklevel=2,
+        )
+        return None
     run_id = os.environ.get("GITHUB_RUN_ID", "unknown")
     attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "1")
     branch = os.environ.get("GITHUB_REF_NAME")
-    return CIContext("github", int(index), int(total), f"{run_id}-{attempt}", branch)
+    return CIContext("github", index_int, total_int, f"{run_id}-{attempt}", branch)
 
 
 def _detect_gitlab() -> CIContext | None:
@@ -80,10 +90,19 @@ def _detect_gitlab() -> CIContext | None:
     total = os.environ.get("CI_NODE_TOTAL")
     if index is None or total is None:
         return None
+    try:
+        index_int, total_int = int(index) - 1, int(total)
+    except ValueError:
+        warnings.warn(
+            f"Non-integer CI env var: CI_NODE_INDEX={index!r}, CI_NODE_TOTAL={total!r}",
+            UserWarning,
+            stacklevel=2,
+        )
+        return None
     return CIContext(
         "gitlab",
-        int(index) - 1,
-        int(total),
+        index_int,
+        total_int,
         os.environ.get("CI_PIPELINE_ID", "unknown"),
         os.environ.get("CI_COMMIT_REF_NAME"),
     )
@@ -96,10 +115,19 @@ def _detect_circleci() -> CIContext | None:
     total = os.environ.get("CIRCLE_NODE_TOTAL")
     if index is None or total is None:
         return None
+    try:
+        index_int, total_int = int(index), int(total)
+    except ValueError:
+        warnings.warn(
+            f"Non-integer CI env var: CIRCLE_NODE_INDEX={index!r}, CIRCLE_NODE_TOTAL={total!r}",
+            UserWarning,
+            stacklevel=2,
+        )
+        return None
     return CIContext(
         "circleci",
-        int(index),
-        int(total),
+        index_int,
+        total_int,
         os.environ.get("CIRCLE_BUILD_NUM", "unknown"),
         os.environ.get("CIRCLE_BRANCH"),
     )
@@ -112,10 +140,20 @@ def _detect_azure() -> CIContext | None:
     total = os.environ.get("SYSTEM_TOTALJOBSINPHASE")
     if index is None or total is None:
         return None
+    try:
+        index_int, total_int = int(index) - 1, int(total)
+    except ValueError:
+        warnings.warn(
+            f"Non-integer CI env var: SYSTEM_JOBPOSITIONINPHASE={index!r},"
+            f" SYSTEM_TOTALJOBSINPHASE={total!r}",
+            UserWarning,
+            stacklevel=2,
+        )
+        return None
     return CIContext(
         "azure",
-        int(index) - 1,
-        int(total),
+        index_int,
+        total_int,
         os.environ.get("BUILD_BUILDID", "unknown"),
         os.environ.get("BUILD_SOURCEBRANCH"),
     )
@@ -128,10 +166,20 @@ def _detect_buildkite() -> CIContext | None:
     total = os.environ.get("BUILDKITE_PARALLEL_JOB_COUNT")
     if index is None or total is None:
         return None
+    try:
+        index_int, total_int = int(index), int(total)
+    except ValueError:
+        warnings.warn(
+            f"Non-integer CI env var: BUILDKITE_PARALLEL_JOB={index!r},"
+            f" BUILDKITE_PARALLEL_JOB_COUNT={total!r}",
+            UserWarning,
+            stacklevel=2,
+        )
+        return None
     return CIContext(
         "buildkite",
-        int(index),
-        int(total),
+        index_int,
+        total_int,
         os.environ.get("BUILDKITE_BUILD_ID", "unknown"),
         os.environ.get("BUILDKITE_BRANCH"),
     )
@@ -142,7 +190,16 @@ def _detect_generic() -> CIContext | None:
     total = os.environ.get("PYTEST_BALANCE_NODE_TOTAL")
     if index is None or total is None:
         return None
-    return CIContext("unknown", int(index), int(total), "generic")
+    try:
+        index_int, total_int = int(index), int(total)
+    except ValueError:
+        warnings.warn(
+            f"Non-integer balance env var: NODE_INDEX={index!r}, NODE_TOTAL={total!r}",
+            UserWarning,
+            stacklevel=2,
+        )
+        return None
+    return CIContext("unknown", index_int, total_int, "generic")
 
 
 def _validate(ctx: CIContext) -> None:

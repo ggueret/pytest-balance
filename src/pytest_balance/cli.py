@@ -32,7 +32,7 @@ def add_pytest_options(parser: pytest.Parser) -> None:
 
     group.addoption(
         "--balance-scope",
-        choices=["test", "class", "module", "file", "group"],
+        choices=["test", "class", "module", "group"],
         default="module",
         help="Scope for grouping tests (default: module).",
     )
@@ -62,13 +62,6 @@ def add_pytest_options(parser: pytest.Parser) -> None:
         type=int,
         default=None,
         help="Explicit total node count (overrides CI auto-detection).",
-    )
-
-    group.addoption(
-        "--balance-algorithm",
-        choices=["lpt"],
-        default="lpt",
-        help="Partitioning algorithm (default: lpt).",
     )
 
     group.addoption(
@@ -161,7 +154,7 @@ def main() -> None:
     )
     plan_parser.add_argument(
         "--scope",
-        choices=["test", "class", "module", "file", "group"],
+        choices=["test", "class", "module", "group"],
         default="module",
         help="Scope for grouping tests (default: module).",
     )
@@ -223,35 +216,35 @@ def _cmd_prune(store_path: Path, max_runs: int, store_arg: str | None = None) ->
         print("No duration store found.")
         sys.exit(0)
 
-    # Collect all records, preserving insertion order
-    all_lines: list[str] = []
-    run_ids_seen: list[str] = []
+    # Single-pass: parse each line once, group by run_id
+    run_id_lines: dict[str, list[str]] = {}
+    run_id_order: list[str] = []
+    no_rid_lines: list[str] = []
+    total_before = 0
+
     for line in store.read_text().splitlines():
         line = line.strip()
         if not line:
             continue
         try:
             data = json_mod.loads(line)
-            rid = data.get("run_id", "")
-            if rid and rid not in run_ids_seen:
-                run_ids_seen.append(rid)
-            all_lines.append(line)
         except (json_mod.JSONDecodeError, KeyError):
             continue
-
-    total_before = len(all_lines)
-
-    # Keep only records whose run_id is among the last max_runs distinct run_ids
-    keep_run_ids: set[str] = set(run_ids_seen[-max_runs:])
-    pruned_lines: list[str] = []
-    for line in all_lines:
-        try:
-            data = json_mod.loads(line)
-            rid = data.get("run_id", "")
-            if not rid or rid in keep_run_ids:
-                pruned_lines.append(line)
-        except (json_mod.JSONDecodeError, KeyError):
+        total_before += 1
+        rid = data.get("run_id", "")
+        if not rid:
+            no_rid_lines.append(line)
             continue
+        if rid not in run_id_lines:
+            run_id_lines[rid] = []
+            run_id_order.append(rid)
+        run_id_lines[rid].append(line)
+
+    # Keep the last max_runs distinct run_ids
+    keep_rids = run_id_order[-max_runs:]
+    pruned_lines = list(no_rid_lines)
+    for rid in keep_rids:
+        pruned_lines.extend(run_id_lines[rid])
 
     total_after = len(pruned_lines)
     store.write_text("\n".join(pruned_lines) + "\n" if pruned_lines else "")
@@ -304,7 +297,7 @@ def _cmd_plan(
 ) -> None:
     from pytest_balance.algorithms.lpt import partition
     from pytest_balance.algorithms.partitioner import Scope, group_by_scope
-    from pytest_balance.store.reader import Estimator, load_estimates
+    from pytest_balance.store.reader import Estimator, default_estimate, load_estimates
 
     store = store_path / "durations.jsonl"
     estimates = load_estimates(store, Estimator(estimator))
@@ -313,12 +306,15 @@ def _cmd_plan(
         print("No duration data found.")
         sys.exit(0)
 
+    fallback = default_estimate(estimates)
     test_ids = list(estimates.keys())
     groups = group_by_scope(test_ids, Scope(scope))
 
     group_durations: dict[str, float] = {}
     for group in groups:
-        group.estimated_duration = sum(estimates[tid].estimate for tid in group.test_ids)
+        group.estimated_duration = sum(
+            estimates.get(tid, fallback).estimate for tid in group.test_ids
+        )
         group_durations[group.scope_id] = group.estimated_duration
 
     buckets = partition(group_durations, node_total)
@@ -340,4 +336,4 @@ def _cmd_plan(
             bucket_time = sum(group_durations.get(scope_id, 0.0) for scope_id in bucket)
             print(f"Node {i}: {len(bucket)} group(s), {bucket_time:.1f}s estimated")
             for scope_id in bucket:
-                print(f"  {scope_id} ({group_durations[scope_id]:.3f}s)")
+                print(f"  {scope_id} ({group_durations.get(scope_id, 0.0):.3f}s)")
