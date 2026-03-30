@@ -20,6 +20,15 @@ def _mock_node(gateway_id: str = "gw0") -> MagicMock:
     return node
 
 
+def _mock_config(n_workers: int) -> MagicMock:
+    """Create a mock config whose tx spec yields *n_workers* entries."""
+    config = MagicMock()
+    config.getvalue.side_effect = lambda key: {
+        "tx": [f"{n_workers}*popen"],
+    }[key]
+    return config
+
+
 def _make_estimates(test_ids: list[str], durations: list[float]) -> dict[str, DurationEstimate]:
     """Build an estimates dict from parallel lists of test IDs and durations."""
     return {
@@ -35,8 +44,7 @@ def _setup_scheduler(
     scope: Scope = Scope.TEST,
 ) -> tuple[BalanceScheduler, list[MagicMock]]:
     """Create a scheduler, register nodes, add collections, and schedule."""
-    sched = BalanceScheduler(MagicMock(), MagicMock(), scope, estimates)
-    sched.numnodes = n_workers
+    sched = BalanceScheduler(_mock_config(n_workers), MagicMock(), scope, estimates)
     nodes = [_mock_node(f"gw{i}") for i in range(n_workers)]
     for node in nodes:
         sched.add_node(node)
@@ -47,16 +55,14 @@ def _setup_scheduler(
 
 class TestBalanceScheduler:
     def test_add_nodes(self):
-        sched = BalanceScheduler(MagicMock(), MagicMock(), Scope.TEST, {})
-        sched.numnodes = 2
+        sched = BalanceScheduler(_mock_config(2), MagicMock(), Scope.TEST, {})
         n1, n2 = _mock_node("gw0"), _mock_node("gw1")
         sched.add_node(n1)
         sched.add_node(n2)
         assert len(sched.nodes) == 2
 
     def test_collection_completed(self):
-        sched = BalanceScheduler(MagicMock(), MagicMock(), Scope.TEST, {})
-        sched.numnodes = 2
+        sched = BalanceScheduler(_mock_config(2), MagicMock(), Scope.TEST, {})
         n1, n2 = _mock_node("gw0"), _mock_node("gw1")
         sched.add_node(n1)
         sched.add_node(n2)
@@ -71,8 +77,7 @@ class TestBalanceScheduler:
             "test_a.py::test_slow": DurationEstimate("test_a.py::test_slow", 10.0, 1.0, 5),
             "test_a.py::test_fast": DurationEstimate("test_a.py::test_fast", 1.0, 1.0, 5),
         }
-        sched = BalanceScheduler(MagicMock(), MagicMock(), Scope.TEST, estimates)
-        sched.numnodes = 2
+        sched = BalanceScheduler(_mock_config(2), MagicMock(), Scope.TEST, estimates)
         n1, n2 = _mock_node("gw0"), _mock_node("gw1")
         sched.add_node(n1)
         sched.add_node(n2)
@@ -85,8 +90,7 @@ class TestBalanceScheduler:
 
     def test_mark_test_complete(self):
         estimates = {"a::t1": DurationEstimate("a::t1", 1.0, 1.0, 5)}
-        sched = BalanceScheduler(MagicMock(), MagicMock(), Scope.TEST, estimates)
-        sched.numnodes = 1
+        sched = BalanceScheduler(_mock_config(1), MagicMock(), Scope.TEST, estimates)
         n1 = _mock_node("gw0")
         sched.add_node(n1)
         sched.add_node_collection(n1, ["a::t1"])
@@ -95,8 +99,7 @@ class TestBalanceScheduler:
         assert sched.tests_finished
 
     def test_empty_collection(self):
-        sched = BalanceScheduler(MagicMock(), MagicMock(), Scope.TEST, {})
-        sched.numnodes = 2
+        sched = BalanceScheduler(_mock_config(2), MagicMock(), Scope.TEST, {})
         n1, n2 = _mock_node("gw0"), _mock_node("gw1")
         sched.add_node(n1)
         sched.add_node(n2)
@@ -155,8 +158,7 @@ class TestWorkStealing:
         ]
         estimates = _make_estimates(collection, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
 
-        sched = BalanceScheduler(MagicMock(), MagicMock(), Scope.MODULE, estimates)
-        sched.numnodes = 2
+        sched = BalanceScheduler(_mock_config(2), MagicMock(), Scope.MODULE, estimates)
         n1, n2 = _mock_node("gw0"), _mock_node("gw1")
         sched.add_node(n1)
         sched.add_node(n2)
@@ -189,8 +191,7 @@ class TestWorkStealing:
         collection = [f"test_{i}.py::test" for i in range(8)]
         estimates = _make_estimates(collection, [1.0] * 8)
 
-        sched = BalanceScheduler(MagicMock(), MagicMock(), Scope.TEST, estimates)
-        sched.numnodes = 3
+        sched = BalanceScheduler(_mock_config(3), MagicMock(), Scope.TEST, estimates)
         n1, n2, n3 = _mock_node("gw0"), _mock_node("gw1"), _mock_node("gw2")
         for n in [n1, n2, n3]:
             sched.add_node(n)
@@ -276,8 +277,7 @@ class TestNodeCrashRecovery:
         collection = ["test_a.py::test_1", "test_a.py::test_2", "test_a.py::test_3"]
         estimates = _make_estimates(collection, [1.0, 1.0, 1.0])
 
-        sched = BalanceScheduler(MagicMock(), MagicMock(), Scope.TEST, estimates)
-        sched.numnodes = 2
+        sched = BalanceScheduler(_mock_config(2), MagicMock(), Scope.TEST, estimates)
         n1, n2 = _mock_node("gw0"), _mock_node("gw1")
         sched.add_node(n1)
         sched.add_node(n2)
@@ -297,8 +297,7 @@ class TestNodeCrashRecovery:
         collection = ["test_a.py::test_1"]
         estimates = _make_estimates(collection, [1.0])
 
-        sched = BalanceScheduler(MagicMock(), MagicMock(), Scope.TEST, estimates)
-        sched.numnodes = 1
+        sched = BalanceScheduler(_mock_config(1), MagicMock(), Scope.TEST, estimates)
         n1 = _mock_node("gw0")
         sched.add_node(n1)
         sched.add_node_collection(n1, collection)
@@ -329,8 +328,7 @@ class TestCollectionMismatch:
 
     def test_mismatched_collections(self):
         """When workers have different collections, scheduling aborts gracefully."""
-        sched = BalanceScheduler(MagicMock(), MagicMock(), Scope.TEST, {})
-        sched.numnodes = 2
+        sched = BalanceScheduler(_mock_config(2), MagicMock(), Scope.TEST, {})
         n1, n2 = _mock_node("gw0"), _mock_node("gw1")
         sched.add_node(n1)
         sched.add_node(n2)
@@ -409,8 +407,7 @@ class TestEdgeCases:
         collection = ["test_a.py::test_1"]
         estimates = _make_estimates(collection, [1.0])
 
-        sched = BalanceScheduler(MagicMock(), MagicMock(), Scope.TEST, estimates)
-        sched.numnodes = 3
+        sched = BalanceScheduler(_mock_config(3), MagicMock(), Scope.TEST, estimates)
         n1, n2, n3 = _mock_node("gw0"), _mock_node("gw1"), _mock_node("gw2")
         for n in [n1, n2, n3]:
             sched.add_node(n)
@@ -442,8 +439,7 @@ class TestEdgeCases:
 
     def test_has_pending_with_global_pending(self):
         """has_pending is True when only global pending list has items."""
-        sched = BalanceScheduler(MagicMock(), MagicMock(), Scope.TEST, {})
-        sched.numnodes = 1
+        sched = BalanceScheduler(_mock_config(1), MagicMock(), Scope.TEST, {})
         n1 = _mock_node("gw0")
         sched.add_node(n1)
         sched.add_node_collection(n1, ["test_a.py::test_1"])
