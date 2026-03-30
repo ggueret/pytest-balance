@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from xdist.remote import Producer  # type: ignore[import-untyped]
 from xdist.report import report_collection_diff  # type: ignore[import-untyped]
+from xdist.scheduler.load import parse_tx_spec_config  # type: ignore[import-untyped]
 
 from pytest_balance.algorithms.lpt import partition
 from pytest_balance.algorithms.partitioner import Scope, extract_scope, group_by_scope
@@ -45,7 +46,7 @@ class BalanceScheduler:
         self.scope = scope
         self.estimates = estimates
 
-        self.numnodes: int = 0
+        self.numnodes: int = len(parse_tx_spec_config(config))
         self.node2collection: dict[WorkerController, list[str]] = {}
         self.node2pending: dict[WorkerController, list[int]] = {}
         self.pending: list[int] = []
