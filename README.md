@@ -1,5 +1,9 @@
 # pytest-balance
 
+[![PyPI](https://img.shields.io/pypi/v/pytest-balance)](https://pypi.org/project/pytest-balance/)
+[![Python](https://img.shields.io/pypi/pyversions/pytest-balance)](https://pypi.org/project/pytest-balance/)
+[![License](https://img.shields.io/github/license/ggueret/pytest-balance)](https://github.com/ggueret/pytest-balance/blob/main/LICENSE)
+
 Intelligent test distribution for pytest. Split your test suite across CI runners and
 xdist workers based on actual execution times, not file count.
 
