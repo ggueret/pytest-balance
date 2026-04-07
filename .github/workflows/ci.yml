@@ -1,75 +1,91 @@
 name: CI
 
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
-
-permissions:
-  contents: read
 
 jobs:
-  lint:
+  format:
+    name: Format
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
         with:
           enable-cache: true
+      - run: uv sync
+      - run: uv run ruff format --check src tests
 
-      - name: Install dependencies
-        run: uv sync
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        with:
+          enable-cache: true
+      - run: uv sync
+      - run: uv run ruff check src tests
 
-      - name: Check formatting
-        run: uv run ruff format --check src tests
-
-      - name: Lint
-        run: uv run ruff check src tests
-
-      - name: Typecheck
-        run: uv run mypy src
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        with:
+          enable-cache: true
+      - run: uv sync
+      - run: uv run mypy src
 
   test:
+    name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
-
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
         with:
           enable-cache: true
-
-      - name: Install dependencies
-        run: uv sync --python ${{ matrix.python-version }}
-
-      - name: Run tests with coverage
-        run: uv run pytest --cov --cov-report=xml --tb=short
-
-      - name: Upload coverage to Codecov
+      - run: uv sync --python ${{ matrix.python-version }}
+      - run: uv run pytest --cov --cov-report=xml --tb=short
         if: matrix.python-version == '3.14'
-        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad  # v5
+      - run: uv run pytest --tb=short
+        if: matrix.python-version != '3.14'
+      - uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5
+        if: matrix.python-version == '3.14'
         with:
           files: coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
   test-without-xdist:
+    name: Test (without xdist)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
         with:
           enable-cache: true
-
-      - name: Install without xdist
-        run: uv sync --no-group dev && uv pip install pytest ruff mypy
-
-      - name: Run tests
-        run: uv run pytest -v --tb=short -k "not test_xdist"
+      - run: uv sync --no-group dev
+      - run: uv run pytest --tb=short -k "not test_xdist"
