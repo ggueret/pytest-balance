@@ -1,6 +1,6 @@
 [project]
 name = "pytest-balance"
-version = "0.1.0"
+version = "0.1.0a1"
 description = "Intelligent test distribution for pytest based on actual execution times, not file count"
 readme = "README.md"
 license = "MIT"
