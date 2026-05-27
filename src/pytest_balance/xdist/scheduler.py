@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, NoReturn
 
@@ -57,6 +58,7 @@ class BalanceScheduler:
         self.collection: list[str] | None = None
         self._test_id_to_index: dict[str, int] = {}
         self.steal_in_flight: WorkerController | None = None
+        self._history: deque[str] = deque(maxlen=64)
 
     # -- Protocol properties --------------------------------------------------
 
@@ -128,6 +130,7 @@ class BalanceScheduler:
         pending = self.node2pending[node]
         if item_index not in pending:
             self._raise_invariant_violation(node, item_index)
+        self._record("complete", node, item_index)
         pending.remove(item_index)
         self._check_schedule()
 
@@ -161,10 +164,12 @@ class BalanceScheduler:
             else None
         )
 
+        history = "\n".join(f"  {entry}" for entry in self._history) or "  <empty>"
         msg = (
             f"Scheduler invariant violated: node {node.gateway.id} reported completion "
             f"of item {item_index} ({test_id}), which is not in its pending list. "
-            f"Item currently found in: {where}. steal_in_flight={steal!r}."
+            f"Item currently found in: {where}. steal_in_flight={steal!r}.\n"
+            f"Recent scheduling events:\n{history}"
         )
         self.log(msg)
         raise SchedulerInvariantError(msg)
@@ -173,6 +178,7 @@ class BalanceScheduler:
         """Re-add a test to the global pending list."""
         assert self.collection is not None
         self.pending.insert(0, self._test_id_to_index[item])
+        self._record("requeue", None, item)
         self._check_schedule()
 
     def remove_pending_tests_from_node(
@@ -184,6 +190,7 @@ class BalanceScheduler:
 
         Called by ``DSession.worker_unscheduled`` after a steal completes.
         """
+        self._record("unscheduled", node, list(indices))
         assert node is self.steal_in_flight
         self.steal_in_flight = None
 
@@ -198,6 +205,7 @@ class BalanceScheduler:
         Returns the crash item (the test that was running) or None.
         """
         pending = self.node2pending.pop(node)
+        self._record("remove_node", node, list(pending))
 
         crashitem: str | None = None
         if pending:
@@ -269,10 +277,16 @@ class BalanceScheduler:
             if indices:
                 self.node2pending[node].extend(indices)
                 node.send_runtest_some(indices)
+                self._record("dispatch", node, indices)
             else:
                 node.shutdown()
 
     # -- Internal helpers -----------------------------------------------------
+
+    def _record(self, event: str, node: WorkerController | None, payload: object) -> None:
+        """Append a compact scheduling event to the bounded history."""
+        node_id = node.gateway.id if node is not None else "-"
+        self._history.append(f"{event}({node_id}, {payload})")
 
     def _check_schedule(self) -> None:
         """Distribute global pending work and attempt work-stealing."""
@@ -304,6 +318,7 @@ class BalanceScheduler:
             del self.pending[:num]
             self.node2pending[node].extend(tests)
             node.send_runtest_some(tests)
+            self._record("send", node, tests)
 
     def _try_steal_or_shutdown(
         self,
@@ -339,6 +354,7 @@ class BalanceScheduler:
                 node.shutdown()
             return
 
+        self._record("steal", busiest, indices_to_steal)
         busiest.send_steal(indices_to_steal)
         self.steal_in_flight = busiest
 

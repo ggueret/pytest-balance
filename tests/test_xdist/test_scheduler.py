@@ -493,3 +493,23 @@ class TestInvariant:
         assert "gw0" in msg  # the offending node
         assert "node2pending[gw1]" in msg  # where the index actually is
         assert "a.py::t1" in msg  # the human-readable test id
+
+    def test_violation_message_includes_recent_history(self):
+        collection = ["a.py::t1", "a.py::t2", "b.py::t1", "b.py::t2"]
+        estimates = _make_estimates(collection, [1.0, 1.0, 1.0, 1.0])
+        sched = BalanceScheduler(_mock_config(2), MagicMock(), Scope.MODULE, estimates)
+        n1, n2 = _mock_node("gw0"), _mock_node("gw1")
+        for n in (n1, n2):
+            sched.add_node(n)
+            sched.add_node_collection(n, collection)
+        sched.schedule()  # records "dispatch" events
+
+        sched.node2pending[n1] = []
+        sched.node2pending[n2] = [0]
+
+        with pytest.raises(SchedulerInvariantError) as exc:
+            sched.mark_test_complete(n1, 0, 1.0)
+
+        msg = str(exc.value)
+        assert "Recent scheduling events:" in msg
+        assert "dispatch(" in msg
