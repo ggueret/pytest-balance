@@ -47,7 +47,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = ["ruff", "mypy", "pytest", "pytest-cov", "pytest-xdist>=3.5"]
+dev = ["ruff", "mypy", "pytest", "pytest-cov", "pytest-xdist>=3.5", "hypothesis>=6"]
 
 [tool.ruff]
 line-length = 100
