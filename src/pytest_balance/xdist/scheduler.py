@@ -153,16 +153,10 @@ class BalanceScheduler:
         if item_index in self.pending:
             locations.append("global pending")
         where = (
-            ", ".join(locations)
-            if locations
-            else "nowhere (already completed or never assigned?)"
+            ", ".join(locations) if locations else "nowhere (already completed or never assigned?)"
         )
 
-        steal = (
-            self.steal_in_flight.gateway.id
-            if self.steal_in_flight is not None
-            else None
-        )
+        steal = self.steal_in_flight.gateway.id if self.steal_in_flight is not None else None
 
         history = "\n".join(f"  {entry}" for entry in self._history) or "  <empty>"
         msg = (
