@@ -109,9 +109,7 @@ def _mock_config(n):
 
 def build_collection(n_modules, tests_per_module, shuffle_seed):
     collection = [
-        f"mod_{m:02d}.py::test_{t}"
-        for m in range(n_modules)
-        for t in range(tests_per_module)
+        f"mod_{m:02d}.py::test_{t}" for m in range(n_modules) for t in range(tests_per_module)
     ]
     if shuffle_seed is not None:
         random.Random(shuffle_seed).shuffle(collection)
