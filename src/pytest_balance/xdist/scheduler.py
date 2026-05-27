@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NoReturn
 
 from xdist.remote import Producer  # type: ignore[import-untyped]
 from xdist.report import report_collection_diff  # type: ignore[import-untyped]
@@ -23,6 +23,10 @@ MIN_PENDING = 2
 
 # Minimum pending on a source node before we consider stealing from it.
 MIN_STEAL_SOURCE = 3
+
+
+class SchedulerInvariantError(RuntimeError):
+    """A scheduler bookkeeping invariant was violated (see issue #18)."""
 
 
 class BalanceScheduler:
@@ -121,8 +125,49 @@ class BalanceScheduler:
         duration: float = 0,
     ) -> None:
         """Mark a test as completed and try to rebalance."""
-        self.node2pending[node].remove(item_index)
+        pending = self.node2pending[node]
+        if item_index not in pending:
+            self._raise_invariant_violation(node, item_index)
+        pending.remove(item_index)
         self._check_schedule()
+
+    def _raise_invariant_violation(
+        self,
+        node: WorkerController,
+        item_index: int,
+    ) -> NoReturn:
+        """Build a rich diagnostic, log it, then raise. Never returns."""
+        if self.collection is not None and 0 <= item_index < len(self.collection):
+            test_id = self.collection[item_index]
+        else:
+            test_id = "<unknown>"
+
+        locations = [
+            f"node2pending[{other.gateway.id}]"
+            for other, pending in self.node2pending.items()
+            if item_index in pending
+        ]
+        if item_index in self.pending:
+            locations.append("global pending")
+        where = (
+            ", ".join(locations)
+            if locations
+            else "nowhere (already completed or never assigned?)"
+        )
+
+        steal = (
+            self.steal_in_flight.gateway.id
+            if self.steal_in_flight is not None
+            else None
+        )
+
+        msg = (
+            f"Scheduler invariant violated: node {node.gateway.id} reported completion "
+            f"of item {item_index} ({test_id}), which is not in its pending list. "
+            f"Item currently found in: {where}. steal_in_flight={steal!r}."
+        )
+        self.log(msg)
+        raise SchedulerInvariantError(msg)
 
     def mark_test_pending(self, item: str) -> None:
         """Re-add a test to the global pending list."""

@@ -9,7 +9,7 @@ xdist = pytest.importorskip("xdist")
 
 from pytest_balance.algorithms.partitioner import Scope  # noqa: E402
 from pytest_balance.store.models import DurationEstimate  # noqa: E402
-from pytest_balance.xdist.scheduler import BalanceScheduler  # noqa: E402
+from pytest_balance.xdist.scheduler import BalanceScheduler, SchedulerInvariantError  # noqa: E402
 
 
 def _mock_node(gateway_id: str = "gw0") -> MagicMock:
@@ -467,3 +467,29 @@ class TestEdgeCases:
         # State should remain consistent.
         assert sched.node2pending[n1] == pending_before_n1
         assert sched.node2pending[n2] == pending_before_n2
+
+
+class TestInvariant:
+    """The fail-loud diagnostic invariant for issue #18."""
+
+    def test_complete_absent_index_raises_with_location(self):
+        collection = ["a.py::t1", "a.py::t2"]
+        estimates = _make_estimates(collection, [1.0, 1.0])
+        sched = BalanceScheduler(_mock_config(2), MagicMock(), Scope.TEST, estimates)
+        n1, n2 = _mock_node("gw0"), _mock_node("gw1")
+        for n in (n1, n2):
+            sched.add_node(n)
+            sched.add_node_collection(n, collection)
+        sched.schedule()
+
+        # Force index 0 to live on gw1, not on gw0.
+        sched.node2pending[n1] = []
+        sched.node2pending[n2] = [0]
+
+        with pytest.raises(SchedulerInvariantError) as exc:
+            sched.mark_test_complete(n1, 0, 1.0)
+
+        msg = str(exc.value)
+        assert "gw0" in msg  # the offending node
+        assert "node2pending[gw1]" in msg  # where the index actually is
+        assert "a.py::t1" in msg  # the human-readable test id
