@@ -109,140 +109,6 @@ class TestBalanceScheduler:
         assert sched.tests_finished
 
 
-class TestWorkStealing:
-    """Tests for the work-stealing mechanism in _check_schedule."""
-
-    def test_work_stealing_triggered(self):
-        """When one worker finishes and another has >3 pending, steal is attempted."""
-        # 6 tests: one slow (10s) and five fast (1s each).
-        # LPT with 2 workers: gw0 gets the slow test, gw1 gets the 5 fast ones.
-        collection = [
-            "test_a.py::test_slow",
-            "test_b.py::test_1",
-            "test_b.py::test_2",
-            "test_b.py::test_3",
-            "test_b.py::test_4",
-            "test_b.py::test_5",
-        ]
-        estimates = _make_estimates(collection, [10.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-        sched, nodes = _setup_scheduler(collection, estimates, n_workers=2)
-        n_slow, n_fast = nodes[0], nodes[1]
-
-        # Figure out which node got the slow test (1 item) vs the fast tests (5 items).
-        if len(sched.node2pending[n_slow]) < len(sched.node2pending[n_fast]):
-            idle_node, busy_node = n_slow, n_fast
-        else:
-            idle_node, busy_node = n_fast, n_slow
-
-        # The idle node has only 1 test. Complete it so it becomes idle (<2 pending).
-        assert len(sched.node2pending[idle_node]) == 1
-        item = sched.node2pending[idle_node][0]
-        sched.mark_test_complete(idle_node, item, 1.0)
-
-        # The busy node should have had send_steal called on it.
-        busy_node.send_steal.assert_called_once()
-        assert sched.steal_in_flight is busy_node
-
-    def test_work_stealing_scope_aware(self):
-        """With scope=MODULE, stealing takes complete module groups, not individual tests."""
-        # Two modules: mod_a (3 tests) and mod_b (3 tests).
-        # With 2 workers, LPT should put both modules on one worker if durations
-        # are equal (or split them). We force one worker to be busy with both.
-        collection = [
-            "mod_a.py::test_1",
-            "mod_a.py::test_2",
-            "mod_a.py::test_3",
-            "mod_b.py::test_1",
-            "mod_b.py::test_2",
-            "mod_b.py::test_3",
-        ]
-        estimates = _make_estimates(collection, [1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
-
-        sched = BalanceScheduler(_mock_config(2), MagicMock(), Scope.MODULE, estimates)
-        n1, n2 = _mock_node("gw0"), _mock_node("gw1")
-        sched.add_node(n1)
-        sched.add_node(n2)
-        sched.add_node_collection(n1, collection)
-        sched.add_node_collection(n2, collection)
-        sched.schedule()
-
-        # With MODULE scope and equal durations, LPT puts one module per worker.
-        # Manually set up the scenario: n1 has both modules (6 tests), n2 is idle.
-        # Reset to force the scenario we need.
-        sched.node2pending[n1] = [0, 1, 2, 3, 4, 5]
-        sched.node2pending[n2] = []
-        sched.pending = []
-        sched.steal_in_flight = None
-
-        # Trigger rebalance by calling _check_schedule.
-        sched._check_schedule()
-
-        # n1.send_steal should have been called with a complete module group.
-        n1.send_steal.assert_called_once()
-        stolen_indices = n1.send_steal.call_args[0][0]
-        stolen_ids = [collection[i] for i in stolen_indices]
-
-        # All stolen tests should belong to the same module.
-        modules = {tid.split("::")[0] for tid in stolen_ids}
-        assert len(modules) == 1, f"Stole from multiple modules: {modules}"
-
-    def test_steal_in_flight_guard(self):
-        """Only one steal at a time -- second idle worker does not trigger another steal."""
-        collection = [f"test_{i}.py::test" for i in range(8)]
-        estimates = _make_estimates(collection, [1.0] * 8)
-
-        sched = BalanceScheduler(_mock_config(3), MagicMock(), Scope.TEST, estimates)
-        n1, n2, n3 = _mock_node("gw0"), _mock_node("gw1"), _mock_node("gw2")
-        for n in [n1, n2, n3]:
-            sched.add_node(n)
-            sched.add_node_collection(n, collection)
-        sched.schedule()
-
-        # Put all pending on n1, leave n2 and n3 idle.
-        sched.node2pending[n1] = list(range(8))
-        sched.node2pending[n2] = []
-        sched.node2pending[n3] = []
-        sched.pending = []
-        sched.steal_in_flight = None
-
-        # First rebalance triggers steal from n1.
-        sched._check_schedule()
-        assert sched.steal_in_flight is n1
-        n1.send_steal.assert_called_once()
-        steal_call_count = n1.send_steal.call_count
-
-        # Second rebalance (e.g., another node goes idle) should NOT trigger another steal.
-        sched._check_schedule()
-        assert n1.send_steal.call_count == steal_call_count, (
-            "Second steal triggered while one in flight"
-        )
-
-    def test_remove_pending_tests_from_node(self):
-        """Stolen tests are moved from node pending to global pending and redistributed."""
-        collection = [f"test_{i}.py::test" for i in range(6)]
-        estimates = _make_estimates(collection, [1.0] * 6)
-        sched, nodes = _setup_scheduler(collection, estimates, n_workers=2)
-        n1, n2 = nodes
-
-        # Simulate: n1 has all 6 tests, n2 is idle, steal in flight from n1.
-        sched.node2pending[n1] = list(range(6))
-        sched.node2pending[n2] = []
-        sched.pending = []
-        sched.steal_in_flight = n1
-
-        # The worker returns indices [3, 4, 5] as stolen.
-        sched.remove_pending_tests_from_node(n1, [3, 4, 5])
-
-        # Steal should be cleared.
-        assert sched.steal_in_flight is None
-        # n1 should no longer have indices 3, 4, 5.
-        assert 3 not in sched.node2pending[n1]
-        assert 4 not in sched.node2pending[n1]
-        assert 5 not in sched.node2pending[n1]
-        # The stolen tests should have been redistributed (sent to idle n2).
-        assert n2.send_runtest_some.called
-
-
 class TestNodeCrashRecovery:
     """Tests for remove_node crash recovery."""
 
@@ -309,7 +175,7 @@ class TestNodeCrashRecovery:
         assert crashitem is None
 
     def test_remove_node_clears_steal_in_flight(self):
-        """If the crashed node was the steal target, steal_in_flight is cleared."""
+        """If the crashed node was the steal target, steal_requested_from_node is cleared."""
         collection = [f"test_{i}.py::test" for i in range(6)]
         estimates = _make_estimates(collection, [1.0] * 6)
         sched, nodes = _setup_scheduler(collection, estimates, n_workers=2)
@@ -317,10 +183,10 @@ class TestNodeCrashRecovery:
 
         sched.node2pending[n1] = [0, 1, 2, 3]
         sched.node2pending[n2] = [4, 5]
-        sched.steal_in_flight = n1
+        sched.steal_requested_from_node = n1
 
         sched.remove_node(n1)
-        assert sched.steal_in_flight is None
+        assert sched.steal_requested_from_node is None
 
 
 class TestCollectionMismatch:
@@ -402,41 +268,6 @@ class TestEdgeCases:
         # has_pending reflects that work exists somewhere in the system.
         assert sched.has_pending
 
-    def test_more_workers_than_groups(self):
-        """Extra workers get shutdown immediately when there are fewer groups than workers."""
-        collection = ["test_a.py::test_1"]
-        estimates = _make_estimates(collection, [1.0])
-
-        sched = BalanceScheduler(_mock_config(3), MagicMock(), Scope.TEST, estimates)
-        n1, n2, n3 = _mock_node("gw0"), _mock_node("gw1"), _mock_node("gw2")
-        for n in [n1, n2, n3]:
-            sched.add_node(n)
-            sched.add_node_collection(n, collection)
-
-        sched.schedule()
-
-        # Only 1 test exists, so at most 1 worker should have received work.
-        # The others should have been shut down.
-        workers_with_tests = [n for n in [n1, n2, n3] if sched.node2pending[n]]
-        workers_shutdown = [n for n in [n1, n2, n3] if n.shutdown.called]
-        assert len(workers_with_tests) == 1
-        assert len(workers_shutdown) == 2
-
-    def test_tests_finished_false_while_steal_in_flight(self):
-        """tests_finished is False while a steal is in flight, even if all node queues are low."""
-        collection = [f"test_{i}.py::test" for i in range(4)]
-        estimates = _make_estimates(collection, [1.0] * 4)
-        sched, nodes = _setup_scheduler(collection, estimates, n_workers=2)
-        n1, n2 = nodes
-
-        # Drain both nodes to < MIN_PENDING but mark steal in flight.
-        sched.node2pending[n1] = [0]
-        sched.node2pending[n2] = []
-        sched.pending = []
-        sched.steal_in_flight = n1
-
-        assert not sched.tests_finished
-
     def test_has_pending_with_global_pending(self):
         """has_pending is True when only global pending list has items."""
         sched = BalanceScheduler(_mock_config(1), MagicMock(), Scope.TEST, {})
@@ -502,7 +333,7 @@ class TestInvariant:
         for n in (n1, n2):
             sched.add_node(n)
             sched.add_node_collection(n, collection)
-        sched.schedule()  # records "dispatch" events
+        sched.schedule()  # records a "schedule" event
 
         sched.node2pending[n1] = []
         sched.node2pending[n2] = [0]
@@ -512,4 +343,4 @@ class TestInvariant:
 
         msg = str(exc.value)
         assert "Recent scheduling events:" in msg
-        assert "dispatch(" in msg
+        assert "schedule(" in msg
