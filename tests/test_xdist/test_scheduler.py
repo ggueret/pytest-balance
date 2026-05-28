@@ -344,3 +344,49 @@ class TestInvariant:
         msg = str(exc.value)
         assert "Recent scheduling events:" in msg
         assert "schedule(" in msg
+
+
+class TestNativeStealTriggers:
+    """Regression test: native worksteal must trigger send_steal under imbalance.
+
+    The previous custom scope-aware steal was largely inert; this test guards
+    against a silent regression back to that state.
+    """
+
+    def test_idle_worker_triggers_steal_from_busy_worker(self):
+        # Six tests: one heavy module (5 tests) and one light module (1 test).
+        # After schedule(), inject an imbalanced pending state: busy_node holds
+        # 5 tests, light_node holds 1.  This simulates a real imbalance
+        # without relying on exact initial-dispatch counts.
+        collection = [
+            "heavy.py::t1",
+            "heavy.py::t2",
+            "heavy.py::t3",
+            "heavy.py::t4",
+            "heavy.py::t5",
+            "light.py::t1",
+        ]
+        estimates = _make_estimates(collection, [10.0] * 5 + [1.0])
+        sched = BalanceScheduler(_mock_config(2), MagicMock(), Scope.MODULE, estimates)
+        n1, n2 = _mock_node("gw0"), _mock_node("gw1")
+        for n in (n1, n2):
+            sched.add_node(n)
+            sched.add_node_collection(n, collection)
+        sched.schedule()
+
+        # Force the imbalanced state: n1 (busy) has 5 tests, n2 (light) has 1.
+        sched.node2pending[n1] = [0, 1, 2, 3, 4]
+        sched.node2pending[n2] = [5]
+        sched.pending = []
+        busy_node, light_node = n1, n2
+
+        assert len(sched.node2pending[busy_node]) == 5
+        assert len(sched.node2pending[light_node]) == 1
+
+        # The light worker completes its only test -> becomes idle (< MIN_PENDING).
+        sched.mark_test_complete(light_node, sched.node2pending[light_node][0], 1.0)
+
+        # The native scheduler must now request a steal from the busy node.
+        busy_node.send_steal.assert_called_once()
+        stolen = busy_node.send_steal.call_args.args[0]
+        assert len(stolen) >= 1, "steal must move at least one test"
