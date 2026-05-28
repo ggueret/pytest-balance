@@ -176,8 +176,9 @@ the `BalanceScheduler` instead of the default xdist load scheduler:
 pytest -n 4 --balance
 ```
 
-The scheduler uses LPT pre-assignment (see How It Works) and falls back to work-stealing
-at runtime when workers finish early. `--dist each` is incompatible with `--balance`.
+The scheduler orders the pending queue by LPT (see How It Works) and lets xdist's native
+work-stealing rebalance at runtime when workers finish early. `--dist each` is incompatible
+with `--balance`.
 
 ## CLI Options
 
@@ -277,8 +278,9 @@ The `--balance-scope` option controls how tests are grouped before partitioning:
 | `group` | Tests tagged with `@<group>` in their node ID | Custom grouping via markers |
 
 Keeping related tests together avoids fixture teardown/setup overhead between nodes.
-The xdist work-stealing also respects scope boundaries, stealing complete groups rather
-than splitting them.
+The xdist work-stealing keeps tests of the same scope adjacent in the pending queue, so
+steals usually take complete groups. A steal at the queue's mid-boundary can occasionally
+split a group; scope grouping is best-effort, not a hard guarantee.
 
 ## How It Works
 
@@ -293,12 +295,13 @@ than splitting them.
 
 **xdist scheduling (--balance with -n):**
 
-1. After all workers collect, the same LPT algorithm pre-assigns groups to workers and
-   sends each worker its initial batch.
-2. As workers finish, idle workers steal complete scope groups from the busiest worker.
-   With `--balance-scope test`, individual tests can be stolen instead of groups.
-3. Workers with no remaining work are shut down so the run ends as soon as all tests
-   complete.
+1. After all workers collect, `compute_order` arranges the authoritative pending queue
+   by descending estimated duration, with tests of the same scope adjacent.
+2. xdist's native worksteal scheduler dispatches chunks to idle workers and rebalances
+   at runtime via stealing (it takes the second half of the busy worker's queue when
+   another worker becomes idle).
+3. Because same-scope tests are adjacent, a steal at the half-boundary rarely cuts a
+   group; scope grouping is best-effort under stealing, not atomic.
 
 **Estimation strategies:**
 
