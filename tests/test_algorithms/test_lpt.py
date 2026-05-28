@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from pytest_balance.algorithms.lpt import partition
+import random
+
+from pytest_balance.algorithms.lpt import compute_order, partition
+from pytest_balance.algorithms.partitioner import Scope
+from pytest_balance.store.models import DurationEstimate
 
 
 class TestLPTPartition:
@@ -50,3 +54,68 @@ class TestLPTPartition:
         buckets = partition(durations, n=6)
         all_assigned = [t for b in buckets for t in b]
         assert sorted(all_assigned) == sorted(durations.keys())
+
+
+def _est(test_ids, durations):
+    return {
+        tid: DurationEstimate(tid, d, 1.0, 5) for tid, d in zip(test_ids, durations, strict=True)
+    }
+
+
+def test_compute_order_empty_collection():
+    assert compute_order([], {}, Scope.MODULE) == []
+
+
+def test_compute_order_is_permutation():
+    collection = ["a.py::t1", "a.py::t2", "b.py::t1"]
+    order = compute_order(collection, _est(collection, [1.0, 1.0, 1.0]), Scope.MODULE)
+    assert sorted(order) == [0, 1, 2]
+
+
+def test_compute_order_scope_adjacent_under_interleaved_collection():
+    collection = ["a.py::t1", "b.py::t1", "a.py::t2", "b.py::t2"]
+    order = compute_order(collection, _est(collection, [1.0, 1.0, 1.0, 1.0]), Scope.MODULE)
+    scopes = [collection[i].split("::")[0] for i in order]
+    runs = []
+    for s in scopes:
+        if not runs or runs[-1] != s:
+            runs.append(s)
+    assert len(runs) == len(set(runs)), f"scopes interleaved: {scopes}"
+
+
+def test_compute_order_descending_duration_first():
+    collection = ["heavy.py::t1", "light.py::t1"]
+    order = compute_order(collection, _est(collection, [10.0, 1.0]), Scope.MODULE)
+    assert collection[order[0]] == "heavy.py::t1"
+
+
+def test_compute_order_lexicographic_tiebreak_on_scope_id():
+    collection = ["z.py::t1", "a.py::t1"]
+    order = compute_order(collection, _est(collection, [1.0, 1.0]), Scope.MODULE)
+    assert collection[order[0]] == "a.py::t1"
+
+
+def test_compute_order_invariant_to_collection_shuffle():
+    base = ["m1.py::t1", "m1.py::t2", "m2.py::t1", "m3.py::t1"]
+    shuffled = list(base)
+    random.Random(42).shuffle(shuffled)
+    estimates = _est(base, [1.0, 1.0, 2.0, 3.0])
+
+    order_base = compute_order(base, estimates, Scope.MODULE)
+    order_shuf = compute_order(shuffled, estimates, Scope.MODULE)
+
+    scopes_base = [base[i].split("::")[0] for i in order_base]
+    scopes_shuf = [shuffled[i].split("::")[0] for i in order_shuf]
+    assert scopes_base == scopes_shuf
+
+
+def test_compute_order_unknown_tests_use_fallback():
+    # Known test has duration 5.0; unknown gets the fallback (median of knowns,
+    # also 5.0 here). Equal durations -> lexicographic tie-break on scope_id
+    # places "known.py" before "unknown.py". The assertion would fail if the
+    # fallback raised, returned an unusable value, or wasn't applied at all.
+    collection = ["known.py::t1", "unknown.py::t1"]
+    estimates = {"known.py::t1": DurationEstimate("known.py::t1", 5.0, 1.0, 5)}
+    order = compute_order(collection, estimates, Scope.MODULE)
+    assert order[0] == 0
+    assert sorted(order) == [0, 1]

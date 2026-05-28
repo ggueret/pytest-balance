@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import heapq
 
+from pytest_balance.algorithms.partitioner import Scope, group_by_scope
+from pytest_balance.store.models import DurationEstimate
+from pytest_balance.store.reader import default_estimate
+
 
 def partition(durations: dict[str, float], n: int) -> list[list[str]]:
     """Partition items into n buckets minimizing makespan using LPT.
@@ -36,3 +40,29 @@ def partition(durations: dict[str, float], n: int) -> list[list[str]]:
         heapq.heappush(heap, (total + durations[item_id], idx))
 
     return buckets
+
+
+def compute_order(
+    collection: list[str],
+    estimates: dict[str, DurationEstimate],
+    scope: Scope,
+) -> list[int]:
+    """Return indices of `collection` ordered LPT scope-adjacent.
+
+    Groups are built by scope, sorted by descending estimated duration with a
+    lexicographic tie-break on scope_id, and tests of the same group are
+    emitted consecutively. Pure function: deterministic, no side effects.
+    """
+    if not collection:
+        return []
+
+    fallback = default_estimate(estimates)
+    groups = group_by_scope(collection, scope)
+    for group in groups:
+        group.estimated_duration = sum(
+            estimates.get(tid, fallback).estimate for tid in group.test_ids
+        )
+    groups.sort(key=lambda g: (-g.estimated_duration, g.scope_id))
+
+    test_id_to_index = {tid: idx for idx, tid in enumerate(collection)}
+    return [test_id_to_index[tid] for group in groups for tid in group.test_ids]
