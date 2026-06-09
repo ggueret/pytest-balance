@@ -209,7 +209,9 @@ def main() -> None:
     elif args.command == "stats":
         _cmd_stats(store_path, args.output_json, args.store)
     elif args.command == "plan":
-        _cmd_plan(store_path, args.node_total, args.scope, args.estimator, args.output_json, args.alpha)
+        _cmd_plan(
+            store_path, args.node_total, args.scope, args.estimator, args.output_json, args.alpha
+        )
 
 
 def _cmd_merge(store_path: Path, files: list[str] | None, output_arg: str | None = None) -> None:
