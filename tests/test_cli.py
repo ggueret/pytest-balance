@@ -132,6 +132,22 @@ class TestCLIPlan:
         assert "No duration data" in result.stdout
 
 
+class TestCLIPlanAlpha:
+    def test_plan_accepts_alpha(self, tmp_path: Path):
+        store = tmp_path / "durations.jsonl"
+        _seed_store(store)
+        result = _run_cli("--path", str(tmp_path), "plan", "2", "--alpha", "0.6")
+        assert result.returncode == 0
+        assert "Node 0" in result.stdout
+
+    def test_plan_rejects_bad_alpha(self, tmp_path: Path):
+        store = tmp_path / "durations.jsonl"
+        _seed_store(store)
+        result = _run_cli("--path", str(tmp_path), "plan", "2", "--alpha", "2")
+        assert result.returncode != 0
+        assert "alpha must be in (0, 1]" in result.stderr
+
+
 class TestAlphaArg:
     @pytest.mark.parametrize("value,expected", [("0.5", 0.5), ("1", 1.0), ("0.3", 0.3)])
     def test_valid(self, value: str, expected: float):
