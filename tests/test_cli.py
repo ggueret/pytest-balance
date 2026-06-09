@@ -141,8 +141,7 @@ class TestCLIPlanAlpha:
         assert "Node 0" in result.stdout
 
     def test_plan_rejects_bad_alpha(self, tmp_path: Path):
-        store = tmp_path / "durations.jsonl"
-        _seed_store(store)
+        # --alpha is rejected by argparse before the store is read, so no seed is needed
         result = _run_cli("--path", str(tmp_path), "plan", "2", "--alpha", "2")
         assert result.returncode != 0
         assert "alpha must be in (0, 1]" in result.stderr
