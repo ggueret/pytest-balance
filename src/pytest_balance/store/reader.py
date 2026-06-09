@@ -18,10 +18,13 @@ class Estimator(enum.Enum):
     LAST = "last"
 
 
+DEFAULT_EMA_ALPHA = 0.3
+
+
 def load_estimates(
     path: Path,
     estimator: Estimator = Estimator.EMA,
-    alpha: float = 0.3,
+    alpha: float = DEFAULT_EMA_ALPHA,
     max_runs: int = 50,
 ) -> dict[str, DurationEstimate]:
     if not path.exists():

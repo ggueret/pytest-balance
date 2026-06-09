@@ -66,6 +66,19 @@ class TestLoadEstimates:
         assert "a" in estimates
         assert "b" in estimates
 
+    def test_default_alpha_constant(self, tmp_path: Path):
+        from pytest_balance.store.reader import DEFAULT_EMA_ALPHA
+
+        assert DEFAULT_EMA_ALPHA == 0.3
+
+        store = tmp_path / "d.jsonl"
+        append_durations(store, [_td("a", 1.0, "r1")])
+        append_durations(store, [_td("a", 5.0, "r2")])
+        # load_estimates() with no alpha must match an explicit DEFAULT_EMA_ALPHA
+        default = load_estimates(store)
+        explicit = load_estimates(store, alpha=DEFAULT_EMA_ALPHA)
+        assert default["a"].estimate == explicit["a"].estimate
+
     def test_default_estimate_for_unknown(self, tmp_path: Path):
         store = tmp_path / "d.jsonl"
         append_durations(store, [_td("a", 1.0), _td("b", 3.0), _td("c", 5.0)])
