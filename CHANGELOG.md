@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0a3] - 2026-06-09
+
+### Added
+- **cli:** Add --alpha to the standalone plan command
+- **cli:** Expose --balance-ema-alpha to the ema estimator
+- **cli:** Validate the EMA alpha range
+
+
+### Changed
+- **store:** Name the default EMA alpha constant
+
+
 ## [0.1.0a2] - 2026-06-09
 
 ### Added
@@ -45,6 +57,8 @@ All notable changes to this project will be documented in this file.
 - Address critical review findings
 
 
+
+[0.1.0a3]: https://github.com/ggueret/pytest-balance/compare/v0.1.0a2...v0.1.0a3
 
 [0.1.0a2]: https://github.com/ggueret/pytest-balance/compare/v0.1.0a1...v0.1.0a2
 
