@@ -183,6 +183,12 @@ def main() -> None:
         help="Duration estimation strategy (default: ema).",
     )
     plan_parser.add_argument(
+        "--alpha",
+        type=_alpha_arg,
+        default=0.3,  # mirrors reader.DEFAULT_EMA_ALPHA
+        help="EMA smoothing factor in (0, 1]; only used by the 'ema' estimator (default: 0.3).",
+    )
+    plan_parser.add_argument(
         "--json",
         action="store_true",
         dest="output_json",
@@ -203,7 +209,7 @@ def main() -> None:
     elif args.command == "stats":
         _cmd_stats(store_path, args.output_json, args.store)
     elif args.command == "plan":
-        _cmd_plan(store_path, args.node_total, args.scope, args.estimator, args.output_json)
+        _cmd_plan(store_path, args.node_total, args.scope, args.estimator, args.output_json, args.alpha)
 
 
 def _cmd_merge(store_path: Path, files: list[str] | None, output_arg: str | None = None) -> None:
@@ -313,13 +319,14 @@ def _cmd_plan(
     scope: str,
     estimator: str,
     output_json: bool,
+    alpha: float,
 ) -> None:
     from pytest_balance.algorithms.lpt import partition
     from pytest_balance.algorithms.partitioner import Scope, group_by_scope
     from pytest_balance.store.reader import Estimator, default_estimate, load_estimates
 
     store = store_path / "durations.jsonl"
-    estimates = load_estimates(store, Estimator(estimator))
+    estimates = load_estimates(store, Estimator(estimator), alpha=alpha)
 
     if not estimates:
         print("No duration data found.")
