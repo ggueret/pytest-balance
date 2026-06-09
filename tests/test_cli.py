@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import argparse
 import json
 import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
+from pytest_balance.cli import _alpha_arg
 from pytest_balance.store.models import TestDuration
 from pytest_balance.store.writer import append_durations
 
@@ -126,3 +130,14 @@ class TestCLIPlan:
         result = _run_cli("--path", str(tmp_path), "plan", "2")
         assert result.returncode == 0
         assert "No duration data" in result.stdout
+
+
+class TestAlphaArg:
+    @pytest.mark.parametrize("value,expected", [("0.5", 0.5), ("1", 1.0), ("0.3", 0.3)])
+    def test_valid(self, value: str, expected: float):
+        assert _alpha_arg(value) == expected
+
+    @pytest.mark.parametrize("value", ["0", "1.5", "-0.1", "abc", "2"])
+    def test_invalid(self, value: str):
+        with pytest.raises(argparse.ArgumentTypeError):
+            _alpha_arg(value)

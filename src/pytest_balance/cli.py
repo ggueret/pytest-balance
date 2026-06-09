@@ -12,6 +12,17 @@ if TYPE_CHECKING:
     import pytest
 
 
+def _alpha_arg(value: str) -> float:
+    """Parse and validate an EMA smoothing factor: a float in (0, 1]."""
+    try:
+        alpha = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"alpha must be a number, got {value!r}") from None
+    if not 0.0 < alpha <= 1.0:
+        raise argparse.ArgumentTypeError(f"alpha must be in (0, 1], got {alpha}")
+    return alpha
+
+
 def add_pytest_options(parser: pytest.Parser) -> None:
     """Register all --balance-* options with pytest."""
     group = parser.getgroup("balance", "Test distribution and balancing")
