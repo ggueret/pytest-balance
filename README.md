@@ -194,6 +194,7 @@ All options are available as pytest command-line flags:
 | `--balance-node-index` | auto | Explicit node index (overrides CI auto-detection) |
 | `--balance-node-total` | auto | Explicit total node count (overrides CI auto-detection) |
 | `--balance-estimator` | `ema` | Duration estimation strategy: `ema`, `median`, `last` |
+| `--balance-ema-alpha` | `0.3` | EMA smoothing factor (`0 < alpha <= 1`); only used by the `ema` estimator |
 | `--balance-no-report` | off | Suppress the balance summary after the test run |
 
 ## Standalone CLI
@@ -246,6 +247,7 @@ Preview how tests would be distributed for a given node count:
 ```bash
 pytest-balance plan 4
 pytest-balance plan 4 --scope class --estimator median --json
+pytest-balance plan 4 --estimator ema --alpha 0.6
 ```
 
 ## Duration Store
@@ -305,8 +307,9 @@ split a group; scope grouping is best-effort, not a hard guarantee.
 
 **Estimation strategies:**
 
-- `ema` (default): exponential moving average (alpha=0.3) over the recorded history,
-  giving more weight to recent runs.
+- `ema` (default): exponential moving average over the recorded history, giving more weight
+  to recent runs. The smoothing factor defaults to `0.3` and is configurable with
+  `--balance-ema-alpha` (`0 < alpha <= 1`).
 - `median`: statistical median over all recorded durations.
 - `last`: the single most recent recorded duration.
 
