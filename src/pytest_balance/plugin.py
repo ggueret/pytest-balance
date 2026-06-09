@@ -41,8 +41,9 @@ def pytest_collection_modifyitems(
     store_file = store_path / "durations.jsonl"
     estimator = Estimator(config.getoption("balance_estimator"))
     scope = Scope(config.getoption("balance_scope"))
+    alpha = config.getoption("balance_ema_alpha")
 
-    estimates = load_estimates(store_file, estimator)
+    estimates = load_estimates(store_file, estimator, alpha=alpha)
 
     test_ids = [item.nodeid for item in items]
 

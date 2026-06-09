@@ -150,3 +150,22 @@ class TestPluginReport:
             "--balance-node-total=1",
         )
         assert "balance report" not in result.stdout.str()
+
+
+class TestPluginEmaAlpha:
+    def test_ema_alpha_accepted(self, pytester):
+        pytester.makepyfile(test_a="def test_1(): pass\ndef test_2(): pass")
+        _seed_balance_store(pytester)
+        result = pytester.runpytest(
+            "--balance",
+            "--balance-ema-alpha=0.5",
+            "--balance-node-index=0",
+            "--balance-node-total=1",
+        )
+        result.assert_outcomes(passed=2)
+
+    def test_ema_alpha_rejected_out_of_range(self, pytester):
+        pytester.makepyfile(test_a="def test_1(): pass")
+        result = pytester.runpytest_subprocess("--balance", "--balance-ema-alpha=2")
+        assert result.ret != 0
+        result.stderr.fnmatch_lines(["*alpha must be in (0, 1]*"])
