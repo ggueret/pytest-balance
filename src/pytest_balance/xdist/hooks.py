@@ -32,5 +32,6 @@ def make_balance_scheduler(config: Any, log: Any) -> Any:
     store_path = Path(config.getoption("balance_path")) / "durations.jsonl"
     estimator_name = config.getoption("balance_estimator")
     estimator = Estimator(estimator_name)
-    estimates = load_estimates(store_path, estimator=estimator)
+    alpha = config.getoption("balance_ema_alpha")
+    estimates = load_estimates(store_path, estimator=estimator, alpha=alpha)
     return BalanceScheduler(config, log, scope, estimates)

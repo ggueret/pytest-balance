@@ -83,6 +83,13 @@ def add_pytest_options(parser: pytest.Parser) -> None:
     )
 
     group.addoption(
+        "--balance-ema-alpha",
+        type=_alpha_arg,
+        default=0.3,  # mirrors reader.DEFAULT_EMA_ALPHA (imported lazily there to keep startup light)
+        help="EMA smoothing factor in (0, 1]; only used by the 'ema' estimator (default: 0.3).",
+    )
+
+    group.addoption(
         "--balance-no-report",
         action="store_true",
         default=False,
