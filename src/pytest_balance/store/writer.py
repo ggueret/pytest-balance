@@ -19,6 +19,7 @@ def _serialize(record: TestDuration) -> str:
             "run_id": record.run_id,
             "worker": record.worker,
             "phase": record.phase,
+            "outcome": record.outcome,
         },
         separators=(",", ":"),
     )

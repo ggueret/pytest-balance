@@ -19,6 +19,7 @@ class TestDuration:
     run_id: str
     worker: str
     phase: str = "call"
+    outcome: str = "passed"
 
     def __post_init__(self) -> None:
         if self.duration < 0:
