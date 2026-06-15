@@ -1,7 +1,7 @@
 [project]
 name = "pytest-balance"
 version = "0.1.0a3"
-description = "Intelligent test distribution for pytest based on actual execution times, not file count"
+description = "Load-balanced test sharding for pytest, by real execution time"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE*"]
@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Software Development :: Testing",
     "Typing :: Typed",
 ]
-keywords = ["pytest", "testing", "load-balancing", "distribution", "xdist", "CI"]
+keywords = ["pytest", "testing", "load-balancing", "sharding", "distribution", "xdist", "CI"]
 dependencies = ["pytest>=8"]
 
 [project.urls]
