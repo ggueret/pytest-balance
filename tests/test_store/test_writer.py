@@ -60,3 +60,11 @@ class TestAppendDurations:
         append_durations(store, records)
         line = json.loads(store.read_text().strip())
         assert line["timestamp"] == "2026-03-24T10:30:00+00:00"
+
+    def test_outcome_serialized(self, tmp_path: Path):
+        store = tmp_path / "durations.jsonl"
+        ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        records = [TestDuration("a", 1.0, ts, "r1", "w0", "call", "failed")]
+        append_durations(store, records)
+        line = json.loads(store.read_text().strip())
+        assert line["outcome"] == "failed"
