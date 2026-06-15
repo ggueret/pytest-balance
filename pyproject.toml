@@ -1,6 +1,6 @@
 [project]
 name = "pytest-balance"
-version = "0.1.0a3"
+version = "0.1.0"
 description = "Load-balanced test sharding for pytest, by real execution time"
 readme = "README.md"
 license = "MIT"
@@ -8,7 +8,7 @@ license-files = ["LICENSE*"]
 requires-python = ">=3.10"
 authors = [{ name = "Geoffrey Guéret", email = "geoffrey@gueret.dev" }]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Framework :: Pytest",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",

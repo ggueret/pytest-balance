@@ -2,7 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.0a3] - 2026-06-09
+## [0.1.0] - 2026-06-15
+
+### Added
+- **store:** Estimate from call-phase durations only
+- **store:** Dedup merged records per phase
+- **plugin:** Set outcome on recorded durations
+- **store:** Record test outcome in durations
+
+
+## [0.1.0a3] - 2026-06-10
 
 ### Added
 - **cli:** Add --alpha to the standalone plan command
@@ -57,6 +66,8 @@ All notable changes to this project will be documented in this file.
 - Address critical review findings
 
 
+
+[0.1.0]: https://github.com/ggueret/pytest-balance/compare/v0.1.0a3...v0.1.0
 
 [0.1.0a3]: https://github.com/ggueret/pytest-balance/compare/v0.1.0a2...v0.1.0a3
 
