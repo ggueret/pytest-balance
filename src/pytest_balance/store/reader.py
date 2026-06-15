@@ -39,6 +39,8 @@ def load_estimates(
                 continue
             try:
                 data = json.loads(line)
+                if data.get("phase", "call") != "call":
+                    continue
                 test_id = data["test_id"]
                 duration = float(data["duration"])
                 durations = records[test_id]

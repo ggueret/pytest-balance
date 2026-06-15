@@ -88,3 +88,16 @@ class TestLoadEstimates:
         unknown = default_estimate(estimates)
         assert unknown.estimate == 3.0  # Median of known
         assert unknown.confidence == 0.0
+
+    def test_non_call_records_ignored(self, tmp_path: Path):
+        store = tmp_path / "d.jsonl"
+        ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        append_durations(
+            store,
+            [
+                TestDuration("a", 5.0, ts, "r1", "w0", "call"),
+                TestDuration("a", 99.0, ts, "r1", "w0", "setup"),
+            ],
+        )
+        estimates = load_estimates(store)
+        assert estimates["a"].estimate == 5.0
