@@ -180,10 +180,7 @@ class TestPluginOutcome:
         result.assert_outcomes(passed=1, failed=1)
         partials = list(pytester.path.glob(".balance/durations*.jsonl"))
         assert partials
-        records = [
-            json.loads(line)
-            for line in partials[0].read_text().strip().split("\n")
-        ]
+        records = [json.loads(line) for line in partials[0].read_text().strip().split("\n")]
         by_id = {r["test_id"]: r["outcome"] for r in records}
         assert by_id["test_a.py::test_pass"] == "passed"
         assert by_id["test_a.py::test_fail"] == "failed"
