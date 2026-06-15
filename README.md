@@ -321,5 +321,5 @@ tests.
 
 ## Status
 
-Beta. The CLI options and the JSONL store format are frozen as of 0.1.0 (additive-only
-from here).
+Alpha. The CLI options and the JSONL store format are frozen as of 0.1.0 and evolve
+additive-only from here; the stable 0.1.0 release follows.
