@@ -4,8 +4,8 @@
 [![Python](https://img.shields.io/pypi/pyversions/pytest-balance?include_prereleases)](https://pypi.org/project/pytest-balance/)
 [![License](https://img.shields.io/github/license/ggueret/pytest-balance)](https://github.com/ggueret/pytest-balance/blob/main/LICENSE)
 
-Intelligent test distribution for pytest. Split your test suite across CI runners and
-xdist workers based on actual execution times, not file count.
+**Load-balanced test sharding for pytest.** Split your suite across CI runners and xdist
+workers by real execution time, not file count.
 
 Most CI parallelism strategies split tests naively: round-robin, alphabetical, or by file
 count. The result is predictable. One runner finishes in 2 minutes, another grinds for
@@ -256,8 +256,11 @@ Durations are stored as JSONL (one JSON object per line) in `.balance/durations.
 Each line records a single test result:
 
 ```json
-{"test_id":"tests/test_api.py::test_login","duration":0.42,"timestamp":"2024-01-15T10:30:00+00:00","run_id":"12345-1","worker":"node0","phase":"call"}
+{"test_id":"tests/test_api.py::test_login","duration":0.42,"timestamp":"2024-01-15T10:30:00+00:00","run_id":"12345-1","worker":"node0","phase":"call","outcome":"passed"}
 ```
+
+The record schema is stable as of 0.1.0 and evolves additive-only: new fields are optional
+and readers ignore unknown fields, so older stores keep working.
 
 **In CI:** each parallel node writes to a separate partial file
 (`durations-<run_id>-<node_index>.jsonl`) to avoid write conflicts. Run
@@ -318,4 +321,5 @@ tests.
 
 ## Status
 
-Alpha. The API and file format may change between releases.
+Beta. The CLI options and the JSONL store format are frozen as of 0.1.0 (additive-only
+from here).
