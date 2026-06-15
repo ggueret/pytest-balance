@@ -66,3 +66,20 @@ class TestMergeFiles:
 
         with pytest.raises(ValueError, match="No input files"):
             merge_files([], tmp_path / "out.jsonl")
+
+    def test_phase_aware_dedup(self, tmp_path: Path):
+        p1 = tmp_path / "partial-0.jsonl"
+        ts = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        append_durations(
+            p1,
+            [
+                TestDuration("a", 1.0, ts, "r1", "w0", "call"),
+                TestDuration("a", 0.2, ts, "r1", "w0", "setup"),
+            ],
+        )
+        out = tmp_path / "merged.jsonl"
+        merge_files([p1], out)
+        lines = out.read_text().strip().split("\n")
+        assert len(lines) == 2
+        phases = {json.loads(line)["phase"] for line in lines}
+        assert phases == {"call", "setup"}
