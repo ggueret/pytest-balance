@@ -121,6 +121,7 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
                     run_id=run_id,
                     worker=worker,
                     phase="call",
+                    outcome=report.outcome,
                 )
             )
 
