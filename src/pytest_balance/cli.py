@@ -194,6 +194,12 @@ def main() -> None:
         dest="output_json",
         help="Output plan as JSON.",
     )
+    plan_parser.add_argument(
+        "--node-index",
+        type=int,
+        default=None,
+        help="Emit only this node's bucket (0-based); default: all nodes.",
+    )
 
     args = parser.parse_args()
     store_path = Path(args.path)
@@ -210,7 +216,13 @@ def main() -> None:
         _cmd_stats(store_path, args.output_json, args.store)
     elif args.command == "plan":
         _cmd_plan(
-            store_path, args.node_total, args.scope, args.estimator, args.output_json, args.alpha
+            store_path,
+            args.node_total,
+            args.scope,
+            args.estimator,
+            args.output_json,
+            args.alpha,
+            args.node_index,
         )
 
 
@@ -323,6 +335,7 @@ def _cmd_plan(
     estimator: str,
     output_json: bool,
     alpha: float,
+    node_index: int | None = None,
 ) -> None:
     from pytest_balance._fmt import format_duration
     from pytest_balance.algorithms.lpt import partition
@@ -349,9 +362,20 @@ def _cmd_plan(
 
     buckets = partition(group_durations, node_total)
 
+    if node_index is not None and not 0 <= node_index < node_total:
+        print(
+            f"node-index {node_index} out of range for {node_total} node(s)",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    selected = (
+        [(node_index, buckets[node_index])] if node_index is not None else list(enumerate(buckets))
+    )
+
     if output_json:
         plan: list[dict[str, object]] = []
-        for i, bucket in enumerate(buckets):
+        for i, bucket in selected:
             bucket_time = sum(group_durations.get(scope_id, 0.0) for scope_id in bucket)
             plan.append(
                 {
@@ -360,9 +384,9 @@ def _cmd_plan(
                     "estimated_time": round(bucket_time, 3),
                 }
             )
-        print(json.dumps(plan, indent=2))
+        print(json.dumps(plan[0] if node_index is not None else plan, indent=2))
     else:
-        for i, bucket in enumerate(buckets):
+        for i, bucket in selected:
             bucket_time = sum(group_durations.get(scope_id, 0.0) for scope_id in bucket)
             print(f"Node {i}: {len(bucket)} group(s), {bucket_time:.1f}s estimated")
             for scope_id in bucket:
