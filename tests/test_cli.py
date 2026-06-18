@@ -151,6 +151,38 @@ class TestCLIPlan:
         assert "0.000s" not in result.stdout
         assert "µs" in result.stdout
 
+    def test_plan_node_index_emits_single_bucket(self, tmp_path: Path):
+        """--node-index returns one bucket as a single JSON object, not a list."""
+        store = tmp_path / "durations.jsonl"
+        _seed_store(store)
+
+        result = _run_cli("--path", str(tmp_path), "plan", "2", "--node-index", "0", "--json")
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert isinstance(data, dict)
+        assert data["node"] == 0
+        assert "groups" in data
+        assert "estimated_time" in data
+
+    def test_plan_node_index_text_shows_one_node(self, tmp_path: Path):
+        """--node-index prints only the selected node in text mode."""
+        store = tmp_path / "durations.jsonl"
+        _seed_store(store)
+
+        result = _run_cli("--path", str(tmp_path), "plan", "2", "--node-index", "1")
+        assert result.returncode == 0
+        assert "Node 1" in result.stdout
+        assert "Node 0" not in result.stdout
+
+    def test_plan_node_index_out_of_range(self, tmp_path: Path):
+        """An out-of-range --node-index is rejected with a non-zero exit."""
+        store = tmp_path / "durations.jsonl"
+        _seed_store(store)
+
+        result = _run_cli("--path", str(tmp_path), "plan", "2", "--node-index", "5")
+        assert result.returncode != 0
+        assert "out of range" in result.stderr
+
 
 class TestCLIPlanAlpha:
     def test_plan_accepts_alpha(self, tmp_path: Path):

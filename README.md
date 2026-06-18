@@ -248,7 +248,11 @@ Preview how tests would be distributed for a given node count:
 pytest-balance plan 4
 pytest-balance plan 4 --scope class --estimator median --json
 pytest-balance plan 4 --estimator ema --alpha 0.6
+pytest-balance plan 4 --node-index 2 --json
 ```
+
+With `--node-index N`, only that node's bucket is emitted (a single object under
+`--json`), so a CI shard can pull its own file list without post-processing the full plan.
 
 ## Duration Store
 
