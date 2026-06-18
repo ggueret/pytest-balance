@@ -279,6 +279,7 @@ def _cmd_prune(store_path: Path, max_runs: int, store_arg: str | None = None) ->
 
 
 def _cmd_stats(store_path: Path, output_json: bool, store_arg: str | None = None) -> None:
+    from pytest_balance._fmt import format_duration
     from pytest_balance.store.reader import Estimator, load_estimates
 
     store = Path(store_arg) if store_arg else store_path / "durations.jsonl"
@@ -310,9 +311,9 @@ def _cmd_stats(store_path: Path, output_json: bool, store_arg: str | None = None
     else:
         print(f"{total_tests} tests")
         print(f"Total estimated time: {total_time:.1f}s")
-        print(f"Average: {avg_time:.3f}s")
-        print(f"Slowest: {max_test.test_id} ({max_test.estimate:.3f}s)")
-        print(f"Fastest: {min_test.test_id} ({min_test.estimate:.3f}s)")
+        print(f"Average: {format_duration(avg_time)}")
+        print(f"Slowest: {max_test.test_id} ({format_duration(max_test.estimate)})")
+        print(f"Fastest: {min_test.test_id} ({format_duration(min_test.estimate)})")
 
 
 def _cmd_plan(
@@ -323,6 +324,7 @@ def _cmd_plan(
     output_json: bool,
     alpha: float,
 ) -> None:
+    from pytest_balance._fmt import format_duration
     from pytest_balance.algorithms.lpt import partition
     from pytest_balance.algorithms.partitioner import Scope, group_by_scope
     from pytest_balance.store.reader import Estimator, default_estimate, load_estimates
@@ -364,4 +366,4 @@ def _cmd_plan(
             bucket_time = sum(group_durations.get(scope_id, 0.0) for scope_id in bucket)
             print(f"Node {i}: {len(bucket)} group(s), {bucket_time:.1f}s estimated")
             for scope_id in bucket:
-                print(f"  {scope_id} ({group_durations.get(scope_id, 0.0):.3f}s)")
+                print(f"  {scope_id} ({format_duration(group_durations.get(scope_id, 0.0))})")

@@ -203,6 +203,7 @@ def _show_plan(
     scope: Scope,
 ) -> None:
     """Display a distribution plan and exit."""
+    from pytest_balance._fmt import format_duration
     from pytest_balance.algorithms.lpt import partition
     from pytest_balance.algorithms.partitioner import group_by_scope
     from pytest_balance.store.reader import default_estimate
@@ -224,7 +225,7 @@ def _show_plan(
         bucket_time = sum(group_durations.get(scope_id, 0.0) for scope_id in bucket)
         print(f"Node {i}: {len(bucket)} group(s), {bucket_time:.1f}s estimated")
         for scope_id in bucket:
-            print(f"  {scope_id} ({group_durations[scope_id]:.3f}s)")
+            print(f"  {scope_id} ({format_duration(group_durations[scope_id])})")
 
 
 # --- Internal stash key and data ---
