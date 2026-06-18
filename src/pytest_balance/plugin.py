@@ -53,7 +53,7 @@ def pytest_collection_modifyitems(
     # --balance-plan check BEFORE ci guard so plan works without CI
     if config.getoption("balance_plan"):
         _show_plan(test_ids, estimates, node_total or 2, scope)
-        raise SystemExit(0)
+        pytest.exit("Plan displayed", returncode=0)
 
     ci = detect_ci(explicit_index=node_index, explicit_total=node_total)
     if ci is None:

@@ -147,6 +147,22 @@ class TestPluginPlan:
         result.stdout.fnmatch_lines(["*µs*"])
         assert "0.000s" not in result.stdout.str()
 
+    def test_balance_plan_exits_without_internalerror(self, pytester):
+        """--balance-plan stops via pytest.exit, not a hook SystemExit traceback."""
+        pytester.makepyfile(
+            test_a="def test_1(): pass\ndef test_2(): pass",
+            test_b="def test_3(): pass\ndef test_4(): pass",
+        )
+        _seed_balance_store(pytester)
+
+        result = pytester.runpytest(
+            "--balance",
+            "--balance-plan",
+            "--balance-node-total=2",
+        )
+        assert "INTERNALERROR" not in result.stdout.str()
+        assert "INTERNALERROR" not in result.stderr.str()
+
 
 class TestPluginReport:
     def test_balance_report_shown(self, pytester):
