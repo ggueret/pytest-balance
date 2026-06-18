@@ -100,6 +100,16 @@ class TestCLIStats:
         assert result.returncode == 0
         assert "No duration data" in result.stdout
 
+    def test_stats_sub_millisecond_not_rounded_to_zero(self, tmp_path: Path):
+        """A sub-millisecond duration renders with an adaptive unit, not 0.000s."""
+        store = tmp_path / "d.jsonl"
+        append_durations(store, [_td("tiny", 0.0004, "r1")])
+
+        result = _run_cli("stats", str(store))
+        assert result.returncode == 0
+        assert "0.000s" not in result.stdout
+        assert "µs" in result.stdout
+
 
 class TestCLIPlan:
     def test_plan_command(self, tmp_path: Path):
@@ -130,6 +140,16 @@ class TestCLIPlan:
         result = _run_cli("--path", str(tmp_path), "plan", "2")
         assert result.returncode == 0
         assert "No duration data" in result.stdout
+
+    def test_plan_sub_millisecond_not_rounded_to_zero(self, tmp_path: Path):
+        """plan's per-group listing renders sub-ms groups with an adaptive unit."""
+        store = tmp_path / "durations.jsonl"
+        append_durations(store, [_td("test_tiny.py::t", 0.0004, "r1")])
+
+        result = _run_cli("--path", str(tmp_path), "plan", "1")
+        assert result.returncode == 0
+        assert "0.000s" not in result.stdout
+        assert "µs" in result.stdout
 
 
 class TestCLIPlanAlpha:

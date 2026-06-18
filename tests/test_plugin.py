@@ -120,6 +120,33 @@ class TestPluginPlan:
         )
         result.stdout.fnmatch_lines(["*Node 0*", "*Node 1*"])
 
+    def test_balance_plan_sub_millisecond_not_rounded_to_zero(self, pytester):
+        """--balance-plan renders sub-ms groups with an adaptive unit, not 0.000s."""
+        pytester.makepyfile(test_tiny="def test_1(): pass")
+        balance_dir = pytester.path / ".balance"
+        balance_dir.mkdir(exist_ok=True)
+        (balance_dir / "durations.jsonl").write_text(
+            json.dumps(
+                {
+                    "test_id": "test_tiny.py::test_1",
+                    "duration": 0.0004,
+                    "timestamp": "2026-01-01T00:00:00+00:00",
+                    "run_id": "r1",
+                    "worker": "w0",
+                    "phase": "call",
+                }
+            )
+            + "\n"
+        )
+
+        result = pytester.runpytest(
+            "--balance",
+            "--balance-plan",
+            "--balance-node-total=1",
+        )
+        result.stdout.fnmatch_lines(["*µs*"])
+        assert "0.000s" not in result.stdout.str()
+
 
 class TestPluginReport:
     def test_balance_report_shown(self, pytester):
